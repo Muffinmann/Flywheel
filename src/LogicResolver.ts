@@ -50,4 +50,19 @@
  * Its second operand is the operation on each element, where you can use the pattern `{"var": "$"}` to refer to the element
  * in this array.
  * Other supported array operation includes: "every" and "map".
+ * 
+ * You can register custom logic via:
+ * ```ts
+ * const customLogic = [
+ *  {
+ *    "operator": "my_custom_operator",
+ *    "operand": custom_function_reference
+ *  } 
+ * ]
+ * const resolver = new LogicResolver()
+ * 
+ * resolver.registerCustomLogic(customLogic)
+ * 
+ * resolver.resolve(conditionLogic, contextValue)
+ * ```
  */
