@@ -2,6 +2,7 @@
   "name": "flywheel",
   "version": "1.0.0",
   "description": "a hierarchical rule engine for field configuration using a condition-action pattern",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
