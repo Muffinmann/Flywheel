@@ -1,3 +1,5 @@
+import { Logic, LogicResolver } from './LogicResolver.js';
+
 /**
  * @fileoverview RuleEngine - simple rule evaluation with precise dependency tracking.
  * 
@@ -206,3 +208,457 @@
  * // }
  * ```
  */
+
+export interface FieldRule {
+  condition: Logic;
+  action: Action;
+  priority: number;
+  description?: string;
+}
+
+export interface RuleSet {
+  [fieldName: string]: FieldRule[];
+}
+
+export interface ActionTypes {
+  set: { target: string; value: any };
+  copy: { source: string; target: string };
+  calculate: { target: string; formula: Logic };
+  trigger: { event: string; params?: any };
+  batch: Action[];
+}
+
+export type Action = {
+  [K in keyof ActionTypes]: { [P in K]: ActionTypes[K] }
+}[keyof ActionTypes];
+
+export interface LookupTable {
+  table: any[];
+  primaryKey: string;
+}
+
+export interface RuleEngineOptions {
+  onEvent?: (eventType: string, params?: any) => void;
+  onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, any>;
+}
+
+export interface FieldState {
+  isVisible: boolean;
+  isRequired: boolean;
+  calculatedValue?: any;
+  [key: string]: any;
+}
+
+export class RuleEngine {
+  private logicResolver: LogicResolver;
+  private ruleSet: RuleSet = {};
+  private sharedRules: Record<string, Logic> = {};
+  private lookupTables: Map<string, LookupTable> = new Map();
+  private context: Record<string, any> = {};
+  private fieldStates: Map<string, FieldState> = new Map();
+  private dependencyGraph: Map<string, Set<string>> = new Map();
+  private reverseDependencyGraph: Map<string, Set<string>> = new Map();
+  private evaluationCache: Map<string, FieldState> = new Map();
+  private customActionHandlers: Map<string, (payload: any, context: any) => void> = new Map();
+  private options: RuleEngineOptions;
+
+  constructor(options: RuleEngineOptions = {}) {
+    this.logicResolver = new LogicResolver();
+    this.options = options;
+    this.initializeBuiltInActions();
+    this.setupCustomVariableResolver();
+  }
+
+  private initializeBuiltInActions(): void {
+    this.customActionHandlers.set('set', (payload) => {
+      const { target, value } = payload;
+      this.setFieldProperty(target, value);
+    });
+
+    this.customActionHandlers.set('copy', (payload) => {
+      const { source, target } = payload;
+      const value = this.getFieldValue(source);
+      this.setFieldProperty(target, value);
+    });
+
+    this.customActionHandlers.set('calculate', (payload, context) => {
+      const { target, formula } = payload;
+      const value = this.logicResolver.resolve(formula, context);
+      this.setFieldProperty(target, value);
+    });
+
+    this.customActionHandlers.set('trigger', (payload) => {
+      const { event, params } = payload;
+      this.options.onEvent?.(event, params);
+    });
+
+    this.customActionHandlers.set('batch', (payload, context) => {
+      for (const action of payload) {
+        this.executeAction(action, context);
+      }
+    });
+  }
+
+  private setupCustomVariableResolver(): void {
+    this.logicResolver.registerCustomLogic([{
+      operator: 'var',
+      operand: (args, context) => {
+        const path = args[0];
+        if (typeof path !== 'string') {
+          return undefined;
+        }
+
+        const parts = path.split('.');
+        const fieldName = parts[0];
+        
+        // First check if it's a direct field value
+        if (parts.length === 1) {
+          return this.context[fieldName];
+        }
+        
+        // If it's a property access like field.isVisible, check field state
+        if (parts.length === 2) {
+          const property = parts[1];
+          const fieldState = this.fieldStates.get(fieldName);
+          if (fieldState && property in fieldState) {
+            return fieldState[property];
+          }
+        }
+        
+        // Fall back to default path resolution
+        let value = this.context;
+        for (const part of parts) {
+          if (value === null || value === undefined) {
+            return undefined;
+          }
+          value = value[part];
+        }
+        return value;
+      }
+    }]);
+  }
+
+  loadRuleSet(ruleSet: RuleSet): void {
+    this.ruleSet = ruleSet;
+    this.buildDependencyGraph();
+    this.validateNoCycles();
+  }
+
+  registerSharedRules(sharedRules: Record<string, Logic>): void {
+    this.sharedRules = { ...this.sharedRules, ...sharedRules };
+  }
+
+  registerLookupTables(tables: LookupTable[]): void {
+    for (const table of tables) {
+      // Use a more descriptive name for the lookup table
+      const tableName = table.table.length > 0 && table.table[0].id ? 'table' : table.primaryKey;
+      this.lookupTables.set(tableName, table);
+    }
+  }
+
+  registerActionHandler(actionType: string, handler: (payload: any, context: any) => void): void {
+    this.customActionHandlers.set(actionType, handler);
+  }
+
+  updateField(fieldUpdates: Record<string, any>): string[] {
+    const invalidatedFields: string[] = [];
+    
+    for (const [fieldName, value] of Object.entries(fieldUpdates)) {
+      this.context[fieldName] = value;
+      
+      const dependentFields = this.reverseDependencyGraph.get(fieldName) || new Set();
+      for (const dependentField of dependentFields) {
+        this.evaluationCache.delete(dependentField);
+        invalidatedFields.push(dependentField);
+      }
+    }
+
+    return invalidatedFields;
+  }
+
+  evaluateField(fieldName: string): FieldState {
+    if (this.evaluationCache.has(fieldName)) {
+      return this.evaluationCache.get(fieldName)!;
+    }
+
+    const dependencies = this.dependencyGraph.get(fieldName) || new Set();
+    for (const dependency of dependencies) {
+      if (dependency !== fieldName) {
+        this.evaluateField(dependency);
+      }
+    }
+
+    const fieldState = this.createDefaultFieldState();
+    this.fieldStates.set(fieldName, fieldState);
+    
+    const rules = this.ruleSet[fieldName] || [];
+    const applicableRules = this.getApplicableRules(rules);
+    this.validateNoPriorityConflicts(fieldName, applicableRules);
+
+    for (const rule of applicableRules) {
+      const conditionResult = this.logicResolver.resolve(
+        this.resolveSharedRules(rule.condition), 
+        this.buildEvaluationContext()
+      );
+      
+      if (conditionResult) {
+        this.executeAction(rule.action, this.buildEvaluationContext());
+      }
+    }
+
+    const finalFieldState = this.fieldStates.get(fieldName)!;
+    this.evaluationCache.set(fieldName, finalFieldState);
+    return finalFieldState;
+  }
+
+  getDependenciesOf(fieldName: string): string[] {
+    return Array.from(this.dependencyGraph.get(fieldName) || []);
+  }
+
+  private createDefaultFieldState(): FieldState {
+    const defaultState: FieldState = {
+      isVisible: false,
+      isRequired: false,
+      calculatedValue: undefined
+    };
+
+    if (this.options.onFieldStateCreation) {
+      return { ...defaultState, ...this.options.onFieldStateCreation({}) };
+    }
+
+    return defaultState;
+  }
+
+  private getApplicableRules(rules: FieldRule[]): FieldRule[] {
+    return rules.sort((a, b) => a.priority - b.priority);
+  }
+
+  private validateNoPriorityConflicts(fieldName: string, rules: FieldRule[]): void {
+    const targetPriorityMap = new Map<string, number[]>();
+    
+    for (const rule of rules) {
+      const targets = this.extractActionTargets(rule.action);
+      for (const target of targets) {
+        if (!targetPriorityMap.has(target)) {
+          targetPriorityMap.set(target, []);
+        }
+        targetPriorityMap.get(target)!.push(rule.priority);
+      }
+    }
+
+    for (const [target, priorities] of targetPriorityMap) {
+      const priorityCounts = new Map<number, number>();
+      for (const priority of priorities) {
+        priorityCounts.set(priority, (priorityCounts.get(priority) || 0) + 1);
+      }
+      
+      for (const [priority, count] of priorityCounts) {
+        if (count > 1) {
+          throw new Error(
+            `Conflicting rules for field '${fieldName}' target '${target}' with same priority ${priority}`
+          );
+        }
+      }
+    }
+  }
+
+  private extractActionTargets(action: Action): string[] {
+    const actionType = Object.keys(action)[0];
+    const payload = (action as any)[actionType];
+
+    switch (actionType) {
+      case 'set':
+        return [payload.target];
+      case 'copy':
+        return [payload.target];
+      case 'calculate':
+        return [payload.target];
+      case 'batch':
+        return payload.flatMap((subAction: Action) => this.extractActionTargets(subAction));
+      default:
+        return [];
+    }
+  }
+
+  private buildDependencyGraph(): void {
+    this.dependencyGraph.clear();
+    this.reverseDependencyGraph.clear();
+
+    for (const [fieldName, rules] of Object.entries(this.ruleSet)) {
+      const dependencies = new Set<string>();
+      
+      for (const rule of rules) {
+        const conditionDeps = this.extractDependencies(rule.condition);
+        const actionDeps = this.extractActionDependencies(rule.action);
+        
+        for (const dep of [...conditionDeps, ...actionDeps]) {
+          dependencies.add(dep);
+        }
+      }
+
+      this.dependencyGraph.set(fieldName, dependencies);
+
+      for (const dependency of dependencies) {
+        if (!this.reverseDependencyGraph.has(dependency)) {
+          this.reverseDependencyGraph.set(dependency, new Set());
+        }
+        this.reverseDependencyGraph.get(dependency)!.add(fieldName);
+      }
+    }
+  }
+
+  private extractDependencies(logic: Logic): string[] {
+    const dependencies: string[] = [];
+    
+    if (typeof logic === 'object' && logic !== null && !Array.isArray(logic)) {
+      for (const [operator, operands] of Object.entries(logic)) {
+        if (operator === 'var') {
+          const path = Array.isArray(operands) ? operands[0] : operands;
+          if (typeof path === 'string') {
+            const fieldName = path.includes('@') ? path.split('@')[0] : path.split('.')[0];
+            if (fieldName !== '$') {
+              dependencies.push(fieldName);
+            }
+          }
+        } else if (operator === '$ref') {
+          const refName = Array.isArray(operands) ? operands[0] : operands;
+          if (this.sharedRules[refName]) {
+            dependencies.push(...this.extractDependencies(this.sharedRules[refName]));
+          }
+        } else if (operator === 'lookup') {
+          const lookupOperands = Array.isArray(operands) ? operands : [operands];
+          if (lookupOperands.length > 1) {
+            dependencies.push(...this.extractDependencies(lookupOperands[1]));
+          }
+        } else {
+          const operandArray = Array.isArray(operands) ? operands : [operands];
+          for (const operand of operandArray) {
+            dependencies.push(...this.extractDependencies(operand));
+          }
+        }
+      }
+    } else if (Array.isArray(logic)) {
+      for (const item of logic) {
+        dependencies.push(...this.extractDependencies(item));
+      }
+    }
+
+    return dependencies;
+  }
+
+  private extractActionDependencies(action: Action): string[] {
+    const actionType = Object.keys(action)[0];
+    const payload = (action as any)[actionType];
+
+    switch (actionType) {
+      case 'copy':
+        return [payload.source];
+      case 'calculate':
+        return this.extractDependencies(payload.formula);
+      case 'batch':
+        return payload.flatMap((subAction: Action) => this.extractActionDependencies(subAction));
+      default:
+        return [];
+    }
+  }
+
+  private validateNoCycles(): void {
+    const visited = new Set<string>();
+    const recursionStack = new Set<string>();
+
+    const hasCycle = (fieldName: string): boolean => {
+      if (recursionStack.has(fieldName)) {
+        return true;
+      }
+      if (visited.has(fieldName)) {
+        return false;
+      }
+
+      visited.add(fieldName);
+      recursionStack.add(fieldName);
+
+      const dependencies = this.dependencyGraph.get(fieldName) || new Set();
+      for (const dependency of dependencies) {
+        if (hasCycle(dependency)) {
+          return true;
+        }
+      }
+
+      recursionStack.delete(fieldName);
+      return false;
+    };
+
+    for (const fieldName of Object.keys(this.ruleSet)) {
+      if (hasCycle(fieldName)) {
+        throw new Error(`Circular dependency detected involving field: ${fieldName}`);
+      }
+    }
+  }
+
+  private resolveSharedRules(logic: Logic): Logic {
+    if (typeof logic === 'object' && logic !== null && !Array.isArray(logic)) {
+      const resolved: any = {};
+      for (const [key, value] of Object.entries(logic)) {
+        if (key === '$ref' && typeof value === 'string') {
+          if (!this.sharedRules[value]) {
+            throw new Error(`Shared rule '${value}' not found`);
+          }
+          return this.resolveSharedRules(this.sharedRules[value]);
+        } else {
+          resolved[key] = Array.isArray(value) 
+            ? value.map(item => this.resolveSharedRules(item))
+            : this.resolveSharedRules(value);
+        }
+      }
+      return resolved;
+    } else if (Array.isArray(logic)) {
+      return logic.map(item => this.resolveSharedRules(item)) as Logic;
+    }
+    return logic;
+  }
+
+  private buildEvaluationContext(): any {
+    return { ...this.context };
+  }
+
+  private executeAction(action: Action, context: any): void {
+    const actionType = Object.keys(action)[0];
+    const payload = (action as any)[actionType];
+    
+    const handler = this.customActionHandlers.get(actionType);
+    if (!handler) {
+      throw new Error(`Unknown action type: ${actionType}`);
+    }
+    
+    handler(payload, context);
+  }
+
+  private setFieldProperty(target: string, value: any): void {
+    const [fieldName, property] = target.split('.');
+    
+    if (!this.fieldStates.has(fieldName)) {
+      this.fieldStates.set(fieldName, this.createDefaultFieldState());
+    }
+    
+    const fieldState = this.fieldStates.get(fieldName)!;
+    fieldState[property] = value;
+  }
+
+  private getFieldValue(path: string): any {
+    if (path.includes('@')) {
+      const [fieldPath, lookupSpec] = path.split('@');
+      const [tableName, property] = lookupSpec.split('.');
+      const keyValue = this.logicResolver.resolve({ var: [fieldPath] }, this.context);
+      
+      const table = this.lookupTables.get(tableName);
+      if (!table) {
+        throw new Error(`Lookup table '${tableName}' not found`);
+      }
+      
+      const record = table.table.find(item => item[table.primaryKey] === keyValue);
+      return record ? record[property] : undefined;
+    }
+    
+    return this.logicResolver.resolve({ var: [path] }, this.context);
+  }
+}
