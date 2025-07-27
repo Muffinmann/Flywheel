@@ -90,5 +90,6 @@
  *  ## Validation
  *  The CLI will throw if:
  *  - Folder name is missing __ separator
- *   - id is duplicated across tree
+ *  - id is duplicated across tree
+ *  - circular field dependencies
  */
