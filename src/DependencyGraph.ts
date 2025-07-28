@@ -64,7 +64,7 @@ export class DependencyGraph {
   }
 
   validateNoCycles(ruleSet: RuleSet): void {
-    const visited = new Set<string>();
+    const visited = new Set<string>(); // once a subgraph is cycle-free, we don't re-explore it.
     const recursionStack = new Set<string>();
 
     const hasCycle = (fieldName: string): boolean => {
