@@ -116,7 +116,7 @@ describe('RuleEngine Orchestration', () => {
           priority: 1
         }],
         level2: [{
-          condition: { '==': [{ var: ['level1.isVisible'] }, true] },
+          condition: { '==': [{ fieldState: ['level1.isVisible'] }, true] },
           action: { track: { fieldName: 'level2' } } as any,
           priority: 1
         }]

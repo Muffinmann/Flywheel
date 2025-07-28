@@ -169,7 +169,8 @@ describe('FieldStateManager', () => {
     test('should build context from base context and field states', () => {
       const baseContext = {
         field1: 'value1',
-        field2: 'value2'
+        field2: 'value2',
+        field3: 'value3',
       };
 
       // Set up some field states
@@ -181,11 +182,14 @@ describe('FieldStateManager', () => {
       expect(evaluationContext).toEqual({
         field1: 'value1',
         field2: 'value2',
-        field3: {
-          isVisible: true,
-          isRequired: false,
-          calculatedValue: undefined,
-          customProp: 'custom'
+        field3: 'value3',
+        fieldStates: {
+          field3: {
+            isVisible: true,
+            isRequired: false,
+            calculatedValue: undefined,
+            customProp: 'custom'
+          }
         }
       });
     });
@@ -203,12 +207,18 @@ describe('FieldStateManager', () => {
 
       const evaluationContext = fieldStateManager.buildEvaluationContext(baseContext);
 
+      // Original field object should remain unchanged
       expect(evaluationContext.field1).toEqual({
         existingProp: 'existing',
-        customValue: 'updated', // Field state should override
+        customValue: 'original'
+      });
+      
+      // Field state should be accessible via fieldStates namespace
+      expect(evaluationContext.fieldStates.field1).toEqual({
         isVisible: true,
         isRequired: false,
-        calculatedValue: undefined
+        calculatedValue: undefined,
+        customValue: 'updated'
       });
     });
 
@@ -222,12 +232,16 @@ describe('FieldStateManager', () => {
 
       const evaluationContext = fieldStateManager.buildEvaluationContext(baseContext);
 
-      expect(evaluationContext.primitiveField).toEqual({
+      // Primitive values should be preserved for direct access: {var: ['primitiveField']}
+      expect(evaluationContext.primitiveField).toBe('primitive_value');
+      expect(evaluationContext.numberField).toBe(42);
+
+      // Field state should be accessible via fieldStates namespace: {fieldState: ['primitiveField.isVisible']}
+      expect(evaluationContext.fieldStates.primitiveField).toEqual({
         isVisible: true,
         isRequired: false,
         calculatedValue: undefined
       });
-      expect(evaluationContext.numberField).toBe(42);
     });
 
     test('should handle null values in base context', () => {
@@ -237,15 +251,29 @@ describe('FieldStateManager', () => {
       };
 
       fieldStateManager.setFieldProperty('nullField.isVisible', true);
+      fieldStateManager.setFieldProperty('undefinedField.isRequired', true);
 
       const evaluationContext = fieldStateManager.buildEvaluationContext(baseContext);
 
-      expect(evaluationContext.nullField).toEqual({
+      // Null values should be preserved for direct access: {var: ['nullField']}
+      expect(evaluationContext.nullField).toBeNull();
+
+      // Field state should be accessible via fieldStates namespace: {fieldState: ['nullField.isVisible']}
+      expect(evaluationContext.fieldStates.nullField).toEqual({
         isVisible: true,
         isRequired: false,
         calculatedValue: undefined
       });
+
+      // Undefined fields remain undefined - only accessible via fieldStates namespace
       expect(evaluationContext.undefinedField).toBeUndefined();
+
+      // Field state accessible via fieldStates namespace
+      expect(evaluationContext.fieldStates.undefinedField).toEqual({
+        isVisible: false,
+        isRequired: true,
+        calculatedValue: undefined
+      });
     });
   });
 
@@ -292,10 +320,10 @@ describe('FieldStateManager', () => {
       // Simulate concurrent operations
       fieldStateManager.setFieldProperty('field1.isVisible', true);
       fieldStateManager.setFieldProperty('field1.isRequired', true);
-      fieldStateManager.setCachedEvaluation('field1', { 
-        isVisible: false, 
-        isRequired: false, 
-        calculatedValue: 'cached' 
+      fieldStateManager.setCachedEvaluation('field1', {
+        isVisible: false,
+        isRequired: false,
+        calculatedValue: 'cached'
       });
 
       const fieldState = fieldStateManager.getFieldState('field1');

@@ -5,6 +5,7 @@ import { FieldStateManager, FieldState } from './FieldStateManager.js';
 import { RuleValidator } from './RuleValidator.js';
 import { LookupManager } from './LookupManager.js';
 import { DefaultDependencyVisitor } from './DefaultDependencyVisitor.js';
+import { fieldStateOperator } from './FieldStateOperators.js';
 
 /**
  * @fileoverview RuleEngine - simple rule evaluation with precise dependency tracking.
@@ -271,6 +272,11 @@ export class RuleEngine {
     this.dependencyGraph = new DependencyGraph(this.dependencyVisitor);
     this.ruleValidator = new RuleValidator((action) => this.actionHandler.extractActionTargets(action));
     this.lookupManager = new LookupManager(this.logicResolver);
+
+    // Register built-in custom operators
+    this.logicResolver.registerCustomLogic([
+      { operator: 'fieldState', operand: fieldStateOperator }
+    ]);
   }
 
   getLogicResolver(): LogicResolver {

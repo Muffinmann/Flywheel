@@ -30,6 +30,14 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
               dependencies.push(fieldName);
             }
           }
+        } else if (operator === 'fieldState') {
+          const pathArray = Array.isArray(operands) ? operands : [operands];
+          for (const path of pathArray) {
+            if (typeof path === 'string') {
+              const fieldName = path.split('.')[0];
+              dependencies.push(fieldName);
+            }
+          }
         } else if (operator === '$ref') {
           const refName = Array.isArray(operands) ? operands[0] : operands;
           if (this.sharedRules[refName] && !visited.has(refName)) {

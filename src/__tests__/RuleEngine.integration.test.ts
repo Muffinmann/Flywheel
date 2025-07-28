@@ -94,12 +94,12 @@ describe('RuleEngine Integration', () => {
           priority: 1
         }],
         field_b: [{
-          condition: { '==': [{ var: ['field_a.calculatedValue'] }, 'step_1'] },
+          condition: { '==': [{ fieldState: ['field_a.calculatedValue'] }, 'step_1'] },
           action: { set: { target: 'field_b.calculatedValue', value: 'step_2' } },
           priority: 1
         }],
         field_c: [{
-          condition: { '==': [{ var: ['field_b.calculatedValue'] }, 'step_2'] },
+          condition: { '==': [{ fieldState: ['field_b.calculatedValue'] }, 'step_2'] },
           action: { set: { target: 'field_c.isVisible', value: true } },
           priority: 1
         }]

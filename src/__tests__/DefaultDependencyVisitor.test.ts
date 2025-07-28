@@ -42,6 +42,32 @@ describe('DefaultDependencyVisitor', () => {
       });
     });
 
+    describe('fieldState operator', () => {
+      test('should extract field name from fieldState', () => {
+        const logic: Logic = { fieldState: ['field_name.isVisible'] };
+        const dependencies = visitor.visitLogic(logic);
+        expect(dependencies).toEqual(['field_name']);
+      });
+
+      test('should extract field name from nested fieldState property', () => {
+        const logic: Logic = { fieldState: ['field_name.permissions.read'] };
+        const dependencies = visitor.visitLogic(logic);
+        expect(dependencies).toEqual(['field_name']);
+      });
+
+      test('should handle fieldState with single string operand', () => {
+        const logic: Logic = { fieldState: 'field_name.isRequired' };
+        const dependencies = visitor.visitLogic(logic);
+        expect(dependencies).toEqual(['field_name']);
+      });
+
+      test('should extract multiple field dependencies from fieldState array', () => {
+        const logic: Logic = { fieldState: ['field1.isVisible', 'field2.isRequired'] };
+        const dependencies = visitor.visitLogic(logic);
+        expect(dependencies).toEqual(['field1', 'field2']);
+      });
+    });
+
     describe('$ref operator', () => {
       test('should resolve shared rule references', () => {
         const sharedRules = {

@@ -97,14 +97,12 @@ export class FieldStateManager {
   buildEvaluationContext(baseContext: Record<string, any>): Record<string, any> {
     const context = { ...baseContext };
 
-    // Add field states to context so var operator can access field.isVisible etc.
+    // Add field states to context under fieldStates namespace: {fieldState: ['field_name.isVisible']}
+    const fieldStatesObj: Record<string, any> = {};
     for (const [fieldName, fieldState] of this.fieldStates.entries()) {
-      if (!context[fieldName] || typeof context[fieldName] !== 'object') {
-        context[fieldName] = { ...fieldState };
-      } else {
-        context[fieldName] = { ...context[fieldName], ...fieldState };
-      }
+      fieldStatesObj[fieldName] = { ...fieldState };
     }
+    context.fieldStates = fieldStatesObj;
 
     return context;
   }

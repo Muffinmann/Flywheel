@@ -347,12 +347,12 @@ describe('Edge Cases and Error Handling', () => {
           priority: 1
         }],
         field_b: [{
-          condition: { '==': [{ var: ['field_a.isVisible'] }, true] },
+          condition: { '==': [{ fieldState: ['field_a.isVisible'] }, true] },
           action: { set: { target: 'field_b.isVisible', value: true } },
           priority: 1
         }],
         field_c: [{
-          condition: { '==': [{ var: ['field_b.isVisible'] }, true] },
+          condition: { '==': [{ fieldState: ['field_b.isVisible'] }, true] },
           action: { set: { target: 'field_c.isVisible', value: true } },
           priority: 1
         }]
@@ -515,7 +515,7 @@ describe('Edge Cases and Error Handling', () => {
           condition = { '==': [{ var: ['root_trigger'] }, 'trigger'] };
         } else {
           // Subsequent fields depend on previous field being visible
-          condition = { '==': [{ var: [`field_${i - 1}.isVisible`] }, true] };
+          condition = { '==': [{ fieldState: [`field_${i - 1}.isVisible`] }, true] };
         }
         
         ruleSet[fieldName] = [{

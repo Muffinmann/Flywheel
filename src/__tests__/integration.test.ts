@@ -80,11 +80,11 @@ describe('Integration Tests', () => {
                   },
                   {
                     '*': [
-                      { var: ['base_total.calculatedValue'] },
+                      { fieldState: ['base_total.calculatedValue'] },
                       { '-': [1, { '/': [{ var: ['discount_percentage'] }, 100] }] }
                     ]
                   },
-                  { var: ['base_total.calculatedValue'] }
+                  { fieldState: ['base_total.calculatedValue'] }
                 ]
               }
             }
@@ -95,7 +95,7 @@ describe('Integration Tests', () => {
 
         // Express shipping for high-value orders
         express_shipping: [{
-          condition: { '>': [{ var: ['total_price.calculatedValue'] }, 100] },
+          condition: { '>': [{ fieldState: ['total_price.calculatedValue'] }, 100] },
           action: { set: { target: 'express_shipping.isVisible', value: true } },
           priority: 1,
           description: 'Show express shipping for orders over $100'
@@ -155,7 +155,7 @@ describe('Integration Tests', () => {
               formula: {
                 '+': [
                   { var: ['product_price'] },
-                  { var: ['shipping_cost.calculatedValue'] }
+                  { fieldState: ['shipping_cost.calculatedValue'] }
                 ]
               }
             }
@@ -164,7 +164,7 @@ describe('Integration Tests', () => {
         }],
 
         free_shipping_notice: [{
-          condition: { '==': [{ var: ['shipping_cost.calculatedValue'] }, 0] },
+          condition: { '==': [{ fieldState: ['shipping_cost.calculatedValue'] }, 0] },
           action: { set: { target: 'free_shipping_notice.isVisible', value: true } },
           priority: 1
         }]
@@ -283,7 +283,7 @@ describe('Integration Tests', () => {
             and: [
               { '!=': [{ var: ['email'] }, ''] },
               { '!=': [{ var: ['password'] }, ''] },
-              { '==': [{ var: ['password_confirm.isValid'] }, true] }
+              { '==': [{ fieldState: ['password_confirm.isValid'] }, true] }
             ]
           },
           action: { set: { target: 'submit_button.isVisible', value: true } },

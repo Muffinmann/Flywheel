@@ -98,11 +98,11 @@
  * ```
  */
 
-export type Logic = 
+export type Logic =
   | { [operator: string]: any[] | any }
-  | string 
-  | number 
-  | boolean 
+  | string
+  | number
+  | boolean
   | null
   | undefined
   | Logic[];
@@ -135,18 +135,18 @@ export class LogicResolver {
   debugEvaluate(logic: Logic, context: any): { result: any; trace: DebugTrace } {
     const trace: DebugTrace = { operator: 'root', operands: [], result: null };
     const result = this.evaluateLogic(logic, context, trace);
-    
+
     // If the trace was overwritten by the actual operation, wrap it in the root
     if (trace.operator !== 'root') {
-      const rootTrace: DebugTrace = { 
-        operator: 'root', 
-        operands: [logic], 
-        result: result, 
-        children: [trace] 
+      const rootTrace: DebugTrace = {
+        operator: 'root',
+        operands: [logic],
+        result: result,
+        children: [trace]
       };
       return { result, trace: rootTrace };
     }
-    
+
     trace.result = result;
     return { result, trace };
   }
@@ -170,7 +170,7 @@ export class LogicResolver {
     }
 
     const [operator, operands] = entries[0];
-    const resolvedOperands = Array.isArray(operands) 
+    const resolvedOperands = Array.isArray(operands)
       ? operands.map(op => this.evaluateLogic(op, context))
       : [this.evaluateLogic(operands, context)];
 
@@ -246,21 +246,21 @@ export class LogicResolver {
         const someArray = operands[0];
         const someCondition = originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
         if (!someCondition || !Array.isArray(someArray)) return false;
-        return someArray.some((item: any) => 
+        return someArray.some((item: any) =>
           this.evaluateLogic(someCondition, { ...context, '$': item })
         );
       case 'every':
         const everyArray = operands[0];
         const everyCondition = originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
         if (!everyCondition || !Array.isArray(everyArray)) return true;
-        return everyArray.every((item: any) => 
+        return everyArray.every((item: any) =>
           this.evaluateLogic(everyCondition, { ...context, '$': item })
         );
       case 'map':
         const mapArray = operands[0];
         const mapExpression = originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
         if (!mapExpression || !Array.isArray(mapArray)) return [];
-        return mapArray.map((item: any) => 
+        return mapArray.map((item: any) =>
           this.evaluateLogic(mapExpression, { ...context, '$': item })
         );
 
