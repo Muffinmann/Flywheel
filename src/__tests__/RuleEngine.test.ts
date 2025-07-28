@@ -20,7 +20,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       engine.updateField({ foot_guidance: 'foot_cup' });
-      
+
       const fieldState = engine.evaluateField('foot_cup_size');
       expect(fieldState.isVisible).toBe(true);
     });
@@ -28,7 +28,7 @@ describe('RuleEngine', () => {
     test('should handle multiple conditions', () => {
       const ruleSet: RuleSet = {
         advanced_options: [{
-          condition: { 
+          condition: {
             and: [
               { '==': [{ var: ['user_type'] }, 'admin'] },
               { '>': [{ var: ['experience_level'] }, 5] }
@@ -41,7 +41,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       engine.updateField({ user_type: 'admin', experience_level: 7 });
-      
+
       const fieldState = engine.evaluateField('advanced_options');
       expect(fieldState.isVisible).toBe(true);
     });
@@ -73,7 +73,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       engine.updateField({ source_field: 'copied_value' });
-      
+
       const fieldState = engine.evaluateField('target_field');
       expect(fieldState.calculatedValue).toBe('copied_value');
     });
@@ -82,11 +82,11 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         total_field: [{
           condition: { '==': [1, 1] },
-          action: { 
-            calculate: { 
-              target: 'total_field.calculatedValue', 
+          action: {
+            calculate: {
+              target: 'total_field.calculatedValue',
               formula: { '+': [{ var: ['a'] }, { var: ['b'] }] }
-            } 
+            }
           },
           priority: 1
         }]
@@ -94,7 +94,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       engine.updateField({ a: 10, b: 5 });
-      
+
       const fieldState = engine.evaluateField('total_field');
       expect(fieldState.calculatedValue).toBe(15);
     });
@@ -117,7 +117,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       engine.evaluateField('trigger_field');
-      
+
       expect(events).toHaveLength(1);
       expect(events[0].eventType).toBe('custom_event');
       expect(events[0].params.data).toBe('test');
@@ -127,7 +127,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         batch_field: [{
           condition: { '==': [1, 1] },
-          action: { 
+          action: {
             batch: [
               { set: { target: 'batch_field.isVisible', value: true } },
               { set: { target: 'batch_field.isRequired', value: true } }
@@ -139,7 +139,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('batch_field');
-      
+
       expect(fieldState.isVisible).toBe(true);
       expect(fieldState.isRequired).toBe(true);
     });
@@ -164,7 +164,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('priority_field');
-      
+
       // Second rule should execute first due to lower priority number
       expect(fieldState.calculatedValue).toBe('first');
     });
@@ -186,7 +186,7 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       expect(() => {
         engine.evaluateField('conflict_field');
       }).toThrow(/Conflicting rules.*same priority 1/);
@@ -205,7 +205,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       const dependencies = engine.getDependenciesOf('dependent_field');
-      
+
       expect(dependencies).toContain('source_field');
     });
 
@@ -219,16 +219,16 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       // First evaluation
       engine.updateField({ source_field: 'show' });
       let fieldState = engine.evaluateField('dependent_field');
       expect(fieldState.isVisible).toBe(true);
-      
+
       // Change dependency
       const invalidated = engine.updateField({ source_field: 'hide' });
       fieldState = engine.evaluateField('dependent_field');
-      
+
       expect(invalidated).toContain('dependent_field');
       expect(fieldState.isVisible).toBe(false);
     });
@@ -270,7 +270,7 @@ describe('RuleEngine', () => {
       engine.registerSharedRules(sharedRules);
       engine.loadRuleSet(ruleSet);
       engine.updateField({ user_role: 'admin' });
-      
+
       const fieldState = engine.evaluateField('admin_panel');
       expect(fieldState.isVisible).toBe(true);
     });
@@ -285,7 +285,7 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       expect(() => {
         engine.evaluateField('test_field');
       }).toThrow("Shared rule 'missing_rule' not found");
@@ -294,21 +294,45 @@ describe('RuleEngine', () => {
 
   describe('Lookup Tables', () => {
     test('should support lookup table operations', () => {
+      const ruleSet: RuleSet = {
+        selected_product_price: [
+          {
+            condition: { '!=': [{ varTable: "selected_product@product-table.price" }, 0] },
+            action: { set: { target: 'selected_product_price.isVisible', value: true } },
+            priority: 1
+          },
+          {
+            condition: {
+              ">": [
+                { 'lookup': ["product-table", { var: "selected_product" }, "price"] },
+                50,
+              ]
+            },
+            action: { set: { target: 'selected_product_price.isRequired', value: true } },
+            priority: 1
+          },
+        ]
+      };
+
+      engine.loadRuleSet(ruleSet);
+
       const lookupTable = {
         table: [
           { id: 'prod1', name: 'Product 1', price: 100 },
           { id: 'prod2', name: 'Product 2', price: 200 }
         ],
-        primaryKey: 'id'
+        primaryKey: 'id',
+        name: 'product-table'
       };
 
       engine.registerLookupTables([lookupTable]);
-      
+
       // Test the @ syntax in field paths
       engine.updateField({ selected_product: 'prod1' });
-      const price = engine['getFieldValue']('selected_product@table.price');
-      
-      expect(price).toBe(100);
+      const productPriceState = engine.evaluateField('selected_product_price')
+
+      expect(productPriceState.isVisible).toBeTruthy();
+      expect(productPriceState.isRequired).toBeTruthy();
     });
   });
 
@@ -331,7 +355,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('custom_field');
-      
+
       expect(fieldState.customProperty).toBe('modified');
       expect(fieldState.readOnly).toBe(false);
     });
@@ -340,7 +364,7 @@ describe('RuleEngine', () => {
   describe('Custom Action Handlers', () => {
     test('should register and use custom action handlers', () => {
       const logs: string[] = [];
-      
+
       engine.registerActionHandler('log', (payload) => {
         logs.push(payload.message);
       });
@@ -355,7 +379,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       engine.evaluateField('log_field');
-      
+
       expect(logs).toContain('Custom action executed');
     });
 
@@ -369,7 +393,7 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       expect(() => {
         engine.evaluateField('unknown_action');
       }).toThrow('Unknown action type: unknownAction');
@@ -380,7 +404,7 @@ describe('RuleEngine', () => {
     test('should handle empty rule sets', () => {
       engine.loadRuleSet({});
       const fieldState = engine.evaluateField('non_existent_field');
-      
+
       expect(fieldState.isVisible).toBe(false);
       expect(fieldState.isRequired).toBe(false);
     });
@@ -396,7 +420,7 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('conditional_field');
-      
+
       expect(fieldState.isVisible).toBe(false);
     });
 
@@ -410,11 +434,11 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       engine.updateField({ counter: 3 });
       let fieldState = engine.evaluateField('reactive_field');
       expect(fieldState.isVisible).toBe(false);
-      
+
       engine.updateField({ counter: 8 });
       fieldState = engine.evaluateField('reactive_field');
       expect(fieldState.isVisible).toBe(true);

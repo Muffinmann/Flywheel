@@ -23,6 +23,8 @@ import { Logic, LogicResolver } from './LogicResolver.js';
  * The "priority" property defines the execution order and by conflict (multiple rules on one field that modify the same sub-property), the rule with lower number wins.
  * The "description" property offers more human-readable interpretation of the rule.
  * 
+ * **Priority Conflict Validation**: The engine validates that no two rules targeting the same field property have the same priority, throwing an error if conflicts are detected.
+ * 
  * Any condition should be expressed in the form of a logic. @see LogicResolver
  * The action will take place once the condition is evaluated to "true".
  * 
@@ -163,21 +165,21 @@ import { Logic, LogicResolver } from './LogicResolver.js';
  *  ....
  * }
  * engine.registerLookupTables([
- * {table: mechanicalJointTable, primaryKey: "id"}
+ *  {table: mechanicalJointTable, primaryKey: "id", name: "mechanical_joints"}
  * ])
  * ```
  * 
  * we also offer the following syntax sugar:
  * ```json
- * {"var": "mechanical_joint_ankle@mechanical_joints.bilateral"}
+ * {"varTable": "mechanical_joint_ankle@mechanical_joints.bilateral"}
  * ```
  * 
  * ## DX
  * - There is a utility function `getDependenciesOf("fieldName")` for testing.
  * 
- * - The `debugEvaluate` can log the whole trace of evaluation.
+ * - The `debugEvaluate` can log the whole trace of evaluation (available on LogicResolver).
  * ```ts
- * const { result, trace } = logicResolver.debugEvaluate(rule, context)
+ * const { result, trace } = engine.logicResolver.debugEvaluate(rule, context)
  * console.log(trace)
  * // {
  * //  operator: "and",
@@ -208,7 +210,6 @@ import { Logic, LogicResolver } from './LogicResolver.js';
  * // }
  * ```
  */
-
 export interface FieldRule {
   condition: Logic;
   action: Action;
@@ -277,7 +278,7 @@ export class RuleEngine {
 
     this.customActionHandlers.set('copy', (payload) => {
       const { source, target } = payload;
-      const value = this.getFieldValue(source);
+      const value = this.logicResolver.resolve({ var: [source] }, this.buildEvaluationContext());
       this.setFieldProperty(target, value);
     });
 
@@ -300,42 +301,57 @@ export class RuleEngine {
   }
 
   private setupCustomVariableResolver(): void {
-    this.logicResolver.registerCustomLogic([{
-      operator: 'var',
-      operand: (args, context) => {
-        const path = args[0];
-        if (typeof path !== 'string') {
-          return undefined;
-        }
-
-        const parts = path.split('.');
-        const fieldName = parts[0];
-        
-        // First check if it's a direct field value
-        if (parts.length === 1) {
-          return this.context[fieldName];
-        }
-        
-        // If it's a property access like field.isVisible, check field state
-        if (parts.length === 2) {
-          const property = parts[1];
-          const fieldState = this.fieldStates.get(fieldName);
-          if (fieldState && property in fieldState) {
-            return fieldState[property];
-          }
-        }
-        
-        // Fall back to default path resolution
-        let value = this.context;
-        for (const part of parts) {
-          if (value === null || value === undefined) {
+    this.logicResolver.registerCustomLogic([
+      {
+        operator: 'varTable',
+        operand: (args, context) => {
+          const path = args[0];
+          if (typeof path !== 'string') {
             return undefined;
           }
-          value = value[part];
+          
+          if (path.includes('@')) {
+            const [fieldPath, lookupSpec] = path.split('@');
+            const [tableName, property] = lookupSpec.split('.');
+            const keyValue = this.logicResolver.resolve({ var: [fieldPath] }, context);
+
+            const table = this.lookupTables.get(tableName);
+            if (!table) {
+              throw new Error(`Lookup table '${tableName}' not found`);
+            }
+
+            const record = table.table.find(item => item[table.primaryKey] === keyValue);
+            return record ? record[property] : undefined;
+          }
+
+          return this.logicResolver.resolve({ var: [path] }, context);
         }
-        return value;
+      },
+      {
+        operator: 'lookup',
+        operand: (args, context) => {
+          if (!Array.isArray(args) || args.length < 3) {
+            return undefined;
+          }
+          
+          const [tableName, keyLogic, property] = args;
+          
+          if (typeof tableName !== 'string' || typeof property !== 'string') {
+            return undefined;
+          }
+          
+          const table = this.lookupTables.get(tableName);
+          if (!table) {
+            throw new Error(`Lookup table '${tableName}' not found`);
+          }
+          
+          const keyValue = this.logicResolver.resolve(keyLogic, context);
+          const record = table.table.find(item => item[table.primaryKey] === keyValue);
+          
+          return record ? record[property] : undefined;
+        }
       }
-    }]);
+    ]);
   }
 
   loadRuleSet(ruleSet: RuleSet): void {
@@ -348,11 +364,15 @@ export class RuleEngine {
     this.sharedRules = { ...this.sharedRules, ...sharedRules };
   }
 
-  registerLookupTables(tables: LookupTable[]): void {
-    for (const table of tables) {
-      // Use a more descriptive name for the lookup table
-      const tableName = table.table.length > 0 && table.table[0].id ? 'table' : table.primaryKey;
-      this.lookupTables.set(tableName, table);
+  registerLookupTables(tables: { table: any[]; primaryKey: string; name?: string }[]): void {
+    for (const tableConfig of tables) {
+      // Use explicit name if provided, otherwise derive from table structure
+      const tableName = tableConfig.name || `${tableConfig.primaryKey}_table`;
+      const lookupTable: LookupTable = {
+        table: tableConfig.table,
+        primaryKey: tableConfig.primaryKey
+      };
+      this.lookupTables.set(tableName, lookupTable);
     }
   }
 
@@ -362,10 +382,10 @@ export class RuleEngine {
 
   updateField(fieldUpdates: Record<string, any>): string[] {
     const invalidatedFields: string[] = [];
-    
+
     for (const [fieldName, value] of Object.entries(fieldUpdates)) {
       this.context[fieldName] = value;
-      
+
       const dependentFields = this.reverseDependencyGraph.get(fieldName) || new Set();
       for (const dependentField of dependentFields) {
         this.evaluationCache.delete(dependentField);
@@ -390,17 +410,17 @@ export class RuleEngine {
 
     const fieldState = this.createDefaultFieldState();
     this.fieldStates.set(fieldName, fieldState);
-    
+
     const rules = this.ruleSet[fieldName] || [];
     const applicableRules = this.getApplicableRules(rules);
     this.validateNoPriorityConflicts(fieldName, applicableRules);
 
     for (const rule of applicableRules) {
       const conditionResult = this.logicResolver.resolve(
-        this.resolveSharedRules(rule.condition), 
+        this.resolveSharedRules(rule.condition),
         this.buildEvaluationContext()
       );
-      
+
       if (conditionResult) {
         this.executeAction(rule.action, this.buildEvaluationContext());
       }
@@ -435,7 +455,7 @@ export class RuleEngine {
 
   private validateNoPriorityConflicts(fieldName: string, rules: FieldRule[]): void {
     const targetPriorityMap = new Map<string, number[]>();
-    
+
     for (const rule of rules) {
       const targets = this.extractActionTargets(rule.action);
       for (const target of targets) {
@@ -451,7 +471,7 @@ export class RuleEngine {
       for (const priority of priorities) {
         priorityCounts.set(priority, (priorityCounts.get(priority) || 0) + 1);
       }
-      
+
       for (const [priority, count] of priorityCounts) {
         if (count > 1) {
           throw new Error(
@@ -486,11 +506,11 @@ export class RuleEngine {
 
     for (const [fieldName, rules] of Object.entries(this.ruleSet)) {
       const dependencies = new Set<string>();
-      
+
       for (const rule of rules) {
         const conditionDeps = this.extractDependencies(rule.condition);
         const actionDeps = this.extractActionDependencies(rule.action);
-        
+
         for (const dep of [...conditionDeps, ...actionDeps]) {
           dependencies.add(dep);
         }
@@ -509,7 +529,7 @@ export class RuleEngine {
 
   private extractDependencies(logic: Logic): string[] {
     const dependencies: string[] = [];
-    
+
     if (typeof logic === 'object' && logic !== null && !Array.isArray(logic)) {
       for (const [operator, operands] of Object.entries(logic)) {
         if (operator === 'var') {
@@ -605,7 +625,7 @@ export class RuleEngine {
           }
           return this.resolveSharedRules(this.sharedRules[value]);
         } else {
-          resolved[key] = Array.isArray(value) 
+          resolved[key] = Array.isArray(value)
             ? value.map(item => this.resolveSharedRules(item))
             : this.resolveSharedRules(value);
         }
@@ -618,47 +638,41 @@ export class RuleEngine {
   }
 
   private buildEvaluationContext(): any {
-    return { ...this.context };
+    const context = { ...this.context };
+    
+    // Add field states to context so var operator can access field.isVisible etc.
+    for (const [fieldName, fieldState] of this.fieldStates.entries()) {
+      if (!context[fieldName] || typeof context[fieldName] !== 'object') {
+        context[fieldName] = { ...fieldState };
+      } else {
+        context[fieldName] = { ...context[fieldName], ...fieldState };
+      }
+    }
+    
+    return context;
   }
 
   private executeAction(action: Action, context: any): void {
     const actionType = Object.keys(action)[0];
     const payload = (action as any)[actionType];
-    
+
     const handler = this.customActionHandlers.get(actionType);
     if (!handler) {
       throw new Error(`Unknown action type: ${actionType}`);
     }
-    
+
     handler(payload, context);
   }
 
   private setFieldProperty(target: string, value: any): void {
     const [fieldName, property] = target.split('.');
-    
+
     if (!this.fieldStates.has(fieldName)) {
       this.fieldStates.set(fieldName, this.createDefaultFieldState());
     }
-    
+
     const fieldState = this.fieldStates.get(fieldName)!;
     fieldState[property] = value;
   }
 
-  private getFieldValue(path: string): any {
-    if (path.includes('@')) {
-      const [fieldPath, lookupSpec] = path.split('@');
-      const [tableName, property] = lookupSpec.split('.');
-      const keyValue = this.logicResolver.resolve({ var: [fieldPath] }, this.context);
-      
-      const table = this.lookupTables.get(tableName);
-      if (!table) {
-        throw new Error(`Lookup table '${tableName}' not found`);
-      }
-      
-      const record = table.table.find(item => item[table.primaryKey] === keyValue);
-      return record ? record[property] : undefined;
-    }
-    
-    return this.logicResolver.resolve({ var: [path] }, this.context);
-  }
 }
