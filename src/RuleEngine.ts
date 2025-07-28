@@ -267,7 +267,7 @@ export class RuleEngine {
     this.logicResolver = new LogicResolver();
     this.options = options;
     this.initializeBuiltInActions();
-    this.setupCustomVariableResolver();
+    this.setupCustomLogic();
   }
 
   private initializeBuiltInActions(): void {
@@ -300,7 +300,7 @@ export class RuleEngine {
     });
   }
 
-  private setupCustomVariableResolver(): void {
+  private setupCustomLogic(): void {
     this.logicResolver.registerCustomLogic([
       {
         operator: 'varTable',
@@ -309,7 +309,7 @@ export class RuleEngine {
           if (typeof path !== 'string') {
             return undefined;
           }
-          
+
           if (path.includes('@')) {
             const [fieldPath, lookupSpec] = path.split('@');
             const [tableName, property] = lookupSpec.split('.');
@@ -333,21 +333,21 @@ export class RuleEngine {
           if (!Array.isArray(args) || args.length < 3) {
             return undefined;
           }
-          
+
           const [tableName, keyLogic, property] = args;
-          
+
           if (typeof tableName !== 'string' || typeof property !== 'string') {
             return undefined;
           }
-          
+
           const table = this.lookupTables.get(tableName);
           if (!table) {
             throw new Error(`Lookup table '${tableName}' not found`);
           }
-          
+
           const keyValue = this.logicResolver.resolve(keyLogic, context);
           const record = table.table.find(item => item[table.primaryKey] === keyValue);
-          
+
           return record ? record[property] : undefined;
         }
       }
@@ -639,7 +639,7 @@ export class RuleEngine {
 
   private buildEvaluationContext(): any {
     const context = { ...this.context };
-    
+
     // Add field states to context so var operator can access field.isVisible etc.
     for (const [fieldName, fieldState] of this.fieldStates.entries()) {
       if (!context[fieldName] || typeof context[fieldName] !== 'object') {
@@ -648,7 +648,7 @@ export class RuleEngine {
         context[fieldName] = { ...context[fieldName], ...fieldState };
       }
     }
-    
+
     return context;
   }
 
