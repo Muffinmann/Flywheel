@@ -75,7 +75,7 @@ describe('RuleManagement', () => {
         }
       };
 
-      expect(() => validateWithDuplicate()).not.toThrow();
+      expect(() => validateWithDuplicate()).toThrow();
     });
   });
 

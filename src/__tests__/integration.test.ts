@@ -46,46 +46,52 @@ describe('Integration Tests', () => {
           priority: 1
         }],
 
-        // Calculate total price
-        total_price: [
-          {
-            condition: { '==': [1, 1] }, // Always true
-            action: {
-              calculate: {
-                target: 'total_price.calculatedValue',
-                formula: {
-                  '+': [
-                    { var: ['product.base_price'] },
-                    { var: ['shipping_cost'] }
-                  ]
-                }
+        // Calculate base total price  
+        base_total: [{
+          condition: { '==': [1, 1] }, // Always true
+          action: {
+            calculate: {
+              target: 'base_total.calculatedValue',
+              formula: {
+                '+': [
+                  { var: ['product.base_price'] },
+                  { var: ['shipping_cost'] }
+                ]
               }
-            },
-            priority: 1,
-            description: 'Calculate base total'
+            }
           },
-          {
-            condition: {
-              and: [
-                { '$ref': 'has_discount_code' },
-                { '>': [{ var: ['discount_percentage'] }, 0] }
-              ]
-            },
-            action: {
-              calculate: {
-                target: 'total_price.calculatedValue',
-                formula: {
-                  '*': [
-                    { var: ['total_price.calculatedValue'] },
-                    { '-': [1, { '/': [{ var: ['discount_percentage'] }, 100] }] }
-                  ]
-                }
+          priority: 1,
+          description: 'Calculate base total'
+        }],
+
+        // Calculate final total price with discount
+        total_price: [{
+          condition: { '==': [1, 1] }, // Always true
+          action: {
+            calculate: {
+              target: 'total_price.calculatedValue',
+              formula: {
+                if: [
+                  {
+                    and: [
+                      { '$ref': 'has_discount_code' },
+                      { '>': [{ var: ['discount_percentage'] }, 0] }
+                    ]
+                  },
+                  {
+                    '*': [
+                      { var: ['base_total.calculatedValue'] },
+                      { '-': [1, { '/': [{ var: ['discount_percentage'] }, 100] }] }
+                    ]
+                  },
+                  { var: ['base_total.calculatedValue'] }
+                ]
               }
-            },
-            priority: 2,
-            description: 'Apply discount'
-          }
-        ],
+            }
+          },
+          priority: 1,
+          description: 'Calculate final total with optional discount'
+        }],
 
         // Express shipping for high-value orders
         express_shipping: [{
@@ -135,6 +141,10 @@ describe('Integration Tests', () => {
           condition: { '==': [{ var: ['shipping_method'] }, 'standard'] },
           action: { set: { target: 'shipping_cost.calculatedValue', value: 5 } },
           priority: 2
+        }, {
+          condition: { '==': [{ var: ['shipping_method'] }, 'free'] },
+          action: { set: { target: 'shipping_cost.calculatedValue', value: 0 } },
+          priority: 3
         }],
 
         total_cost: [{
@@ -222,24 +232,45 @@ describe('Integration Tests', () => {
           }
         ],
 
-        // Password confirmation
+        // Password confirmation visibility
         password_confirm: [
           {
             condition: { '!=': [{ var: ['password'] }, ''] },
             action: { set: { target: 'password_confirm.isVisible', value: true } },
             priority: 1
-          },
+          }
+        ],
+
+        // Password validation (separate field to avoid circular dependency)
+        password_validation: [
           {
             condition: {
               and: [
                 { '!=': [{ var: ['password'] }, ''] },
-                { '!=': [{ var: ['password_confirm'] }, { var: ['password'] }] }
+                { '!=': [{ var: ['password_confirm_input'] }, ''] },
+                { '!=': [{ var: ['password_confirm_input'] }, { var: ['password'] }] }
               ]
             },
             action: {
               batch: [
                 { set: { target: 'password_confirm.isValid', value: false } },
                 { set: { target: 'password_confirm.errorMessage', value: 'Passwords do not match' } }
+              ]
+            },
+            priority: 1
+          },
+          {
+            condition: {
+              and: [
+                { '!=': [{ var: ['password'] }, ''] },
+                { '!=': [{ var: ['password_confirm_input'] }, ''] },
+                { '==': [{ var: ['password_confirm_input'] }, { var: ['password'] }] }
+              ]
+            },
+            action: {
+              batch: [
+                { set: { target: 'password_confirm.isValid', value: true } },
+                { set: { target: 'password_confirm.errorMessage', value: '' } }
               ]
             },
             priority: 2
@@ -275,7 +306,8 @@ describe('Integration Tests', () => {
       expect(passwordConfirm.isVisible).toBe(true);
 
       // Step 3: Enter mismatched password confirmation
-      engine.updateField({ password_confirm: 'secret456' });
+      engine.updateField({ password_confirm_input: 'secret456' });
+      engine.evaluateField('password_validation'); // Trigger validation
       const invalidConfirm = engine.evaluateField('password_confirm');
       expect(invalidConfirm.isValid).toBe(false);
       expect(invalidConfirm.errorMessage).toBe('Passwords do not match');
@@ -285,7 +317,8 @@ describe('Integration Tests', () => {
       expect(submitButton.isVisible).toBe(false);
 
       // Step 4: Fix password confirmation
-      engine.updateField({ password_confirm: 'secret123' });
+      engine.updateField({ password_confirm_input: 'secret123' });
+      engine.evaluateField('password_validation'); // Trigger validation
       const validConfirm = engine.evaluateField('password_confirm');
       expect(validConfirm.isValid).toBe(true);
 
@@ -308,7 +341,8 @@ describe('Integration Tests', () => {
           { id: 'dev002', name: 'Ankle Support', bilateral: false, category: 'orthotic' },
           { id: 'dev003', name: 'Prosthetic Leg', bilateral: false, category: 'prosthetic' }
         ],
-        primaryKey: 'id'
+        primaryKey: 'id',
+        name: 'devices'
       };
 
       engine.registerLookupTables([deviceTable]);
@@ -317,14 +351,14 @@ describe('Integration Tests', () => {
     test('should handle lookup-based configurations', () => {
       const ruleSet: RuleSet = {
         bilateral_option: [{
-          condition: { '==': [{ var: ['selected_device@table.bilateral'] }, true] },
+          condition: { '==': [{ varTable: ['selected_device@devices.bilateral'] }, true] },
           action: { set: { target: 'bilateral_option.isVisible', value: true } },
           priority: 1,
           description: 'Show bilateral option for bilateral devices'
         }],
 
         prosthetic_options: [{
-          condition: { '==': [{ var: ['selected_device@table.category'] }, 'prosthetic'] },
+          condition: { '==': [{ varTable: ['selected_device@devices.category'] }, 'prosthetic'] },
           action: { set: { target: 'prosthetic_options.isVisible', value: true } },
           priority: 1,
           description: 'Show prosthetic-specific options'
@@ -333,9 +367,9 @@ describe('Integration Tests', () => {
         device_name_display: [{
           condition: { '!=': [{ var: ['selected_device'] }, null] },
           action: {
-            copy: {
-              source: 'selected_device@table.name',
-              target: 'device_name_display.calculatedValue'
+            calculate: {
+              target: 'device_name_display.calculatedValue',
+              formula: { varTable: ['selected_device@devices.name'] }
             }
           },
           priority: 1

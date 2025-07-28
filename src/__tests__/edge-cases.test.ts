@@ -161,7 +161,7 @@ describe('Edge Cases and Error Handling', () => {
       const fieldState = engine.evaluateField('nested_field');
       
       // Should set the property even with deep nesting
-      expect(fieldState['deeply.nested.property']).toBe('test');
+      expect(fieldState.deeply?.nested?.property).toBe('test');
     });
 
     test('should handle rapid field updates', () => {
@@ -399,7 +399,12 @@ describe('Edge Cases and Error Handling', () => {
       const ruleSet: RuleSet = {
         lookup_field: [{
           condition: { '==': [1, 1] },
-          action: { copy: { source: 'field@missing_table.property', target: 'lookup_field.value' } },
+          action: { 
+            calculate: { 
+              target: 'lookup_field.value',
+              formula: { varTable: ['field@missing_table.property'] }
+            } 
+          },
           priority: 1
         }]
       };
@@ -503,10 +508,18 @@ describe('Edge Cases and Error Handling', () => {
       // Create a chain of 100 dependent fields
       for (let i = 0; i < 100; i++) {
         const fieldName = `field_${i}`;
-        const dependsOn = i === 0 ? 'root_trigger' : `field_${i - 1}`;
+        let condition;
+        
+        if (i === 0) {
+          // First field depends on root trigger
+          condition = { '==': [{ var: ['root_trigger'] }, 'trigger'] };
+        } else {
+          // Subsequent fields depend on previous field being visible
+          condition = { '==': [{ var: [`field_${i - 1}.isVisible`] }, true] };
+        }
         
         ruleSet[fieldName] = [{
-          condition: { '==': [{ var: [dependsOn] }, 'trigger'] },
+          condition: condition,
           action: { set: { target: `${fieldName}.isVisible`, value: true } },
           priority: 1
         }];
