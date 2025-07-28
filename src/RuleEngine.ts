@@ -4,6 +4,7 @@ import { DependencyGraph, RuleSet } from './DependencyGraph.js';
 import { FieldStateManager, FieldState } from './FieldStateManager.js';
 import { RuleValidator } from './RuleValidator.js';
 import { LookupManager } from './LookupManager.js';
+import { DefaultDependencyVisitor } from './DefaultDependencyVisitor.js';
 
 /**
  * @fileoverview RuleEngine - simple rule evaluation with precise dependency tracking.
@@ -232,6 +233,7 @@ export class RuleEngine {
   private logicResolver: LogicResolver;
   private actionHandler: ActionHandler;
   private dependencyGraph: DependencyGraph;
+  private dependencyVisitor: DefaultDependencyVisitor;
   private fieldStateManager: FieldStateManager;
   private ruleValidator: RuleValidator;
   private lookupManager: LookupManager;
@@ -265,7 +267,8 @@ export class RuleEngine {
       }
     });
 
-    this.dependencyGraph = new DependencyGraph(this.sharedRules);
+    this.dependencyVisitor = new DefaultDependencyVisitor(this.sharedRules);
+    this.dependencyGraph = new DependencyGraph(this.dependencyVisitor);
     this.ruleValidator = new RuleValidator((action) => this.actionHandler.extractActionTargets(action));
     this.lookupManager = new LookupManager(this.logicResolver);
   }
@@ -276,13 +279,13 @@ export class RuleEngine {
 
   loadRuleSet(ruleSet: RuleSet): void {
     this.ruleSet = ruleSet;
-    this.dependencyGraph.buildFromRuleSet(ruleSet, (action) => this.actionHandler.extractActionDependencies(action));
+    this.dependencyGraph.buildFromRuleSet(ruleSet);
     this.dependencyGraph.validateNoCycles(ruleSet);
   }
 
   registerSharedRules(sharedRules: Record<string, Logic>): void {
     this.sharedRules = { ...this.sharedRules, ...sharedRules };
-    this.dependencyGraph.updateSharedRules(this.sharedRules);
+    this.dependencyVisitor.updateSharedRules(this.sharedRules);
   }
 
   registerLookupTables(tables: { table: any[]; primaryKey: string; name?: string }[]): void {

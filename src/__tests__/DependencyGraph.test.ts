@@ -1,13 +1,15 @@
-import { DependencyGraph, RuleSet } from '../DependencyGraph.js';
-import { Action } from '../ActionHandler.js';
+import { DependencyGraph, RuleSet, DependencyVisitor } from '../DependencyGraph.js';
 
 describe('DependencyGraph', () => {
   let dependencyGraph: DependencyGraph;
-  let mockExtractActionDependencies: jest.Mock;
+  let mockVisitor: DependencyVisitor;
 
   beforeEach(() => {
-    mockExtractActionDependencies = jest.fn();
-    dependencyGraph = new DependencyGraph();
+    mockVisitor = {
+      visitLogic: jest.fn(),
+      visitAction: jest.fn()
+    };
+    dependencyGraph = new DependencyGraph(mockVisitor);
   });
 
   describe('Basic Dependency Tracking', () => {
@@ -20,8 +22,9 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue(['field_b']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const dependencies = dependencyGraph.getDependencies('field_a');
       expect(dependencies).toContain('field_b');
@@ -36,8 +39,9 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue(['field_c']);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue([]);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue(['field_c']);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const dependencies = dependencyGraph.getDependencies('field_a');
       expect(dependencies).toContain('field_c');
@@ -46,7 +50,7 @@ describe('DependencyGraph', () => {
     test('should track multiple dependencies per field', () => {
       const ruleSet: RuleSet = {
         target_field: [{
-          condition: { 
+          condition: {
             and: [
               { '==': [{ var: ['field_a'] }, 'value1'] },
               { '==': [{ var: ['field_b'] }, 'value2'] }
@@ -57,8 +61,9 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue(['field_c']);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue(['field_a', 'field_b']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue(['field_c']);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const dependencies = dependencyGraph.getDependencies('target_field');
       expect(dependencies).toContain('field_a');
@@ -75,8 +80,9 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue(['source_field']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const dependents = dependencyGraph.getDependents('source_field');
       expect(dependents).toContain('dependent_field');
@@ -87,19 +93,20 @@ describe('DependencyGraph', () => {
     test('should handle nested var expressions', () => {
       const ruleSet: RuleSet = {
         complex_field: [{
-          condition: { 
+          condition: {
             '+': [
               { var: ['field_a.subProperty'] },
               { var: ['field_b'] }
-            ] 
+            ]
           },
           action: { set: { target: 'complex_field.isVisible', value: true } },
           priority: 1
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue(['field_a', 'field_b']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const dependencies = dependencyGraph.getDependencies('complex_field');
       expect(dependencies).toContain('field_a');
@@ -109,16 +116,17 @@ describe('DependencyGraph', () => {
     test('should handle lookup operations in conditions', () => {
       const ruleSet: RuleSet = {
         lookup_field: [{
-          condition: { 
-            lookup: ['table_name', { var: ['key_field'] }, 'property'] 
+          condition: {
+            lookup: ['table_name', { var: ['key_field'] }, 'property']
           },
           action: { set: { target: 'lookup_field.isVisible', value: true } },
           priority: 1
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue(['key_field']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const dependencies = dependencyGraph.getDependencies('lookup_field');
       expect(dependencies).toContain('key_field');
@@ -133,64 +141,12 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue([]);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const dependencies = dependencyGraph.getDependencies('field_with_dollar');
       expect(dependencies).not.toContain('$');
-    });
-  });
-
-  describe('Shared Rules', () => {
-    test('should resolve shared rule references', () => {
-      const sharedRules = {
-        is_admin: { '==': [{ var: ['user_role'] }, 'admin'] }
-      };
-
-      dependencyGraph.updateSharedRules(sharedRules);
-
-      const ruleSet: RuleSet = {
-        admin_panel: [{
-          condition: { '$ref': 'is_admin' },
-          action: { set: { target: 'admin_panel.isVisible', value: true } },
-          priority: 1
-        }]
-      };
-
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
-
-      const dependencies = dependencyGraph.getDependencies('admin_panel');
-      expect(dependencies).toContain('user_role');
-    });
-
-    test('should handle nested shared rule references', () => {
-      const sharedRules = {
-        is_admin: { '==': [{ var: ['user_role'] }, 'admin'] },
-        has_permission: { 
-          and: [
-            { '$ref': 'is_admin' },
-            { '==': [{ var: ['permission_level'] }, 'high'] }
-          ]
-        }
-      };
-
-      dependencyGraph.updateSharedRules(sharedRules);
-
-      const ruleSet: RuleSet = {
-        secure_area: [{
-          condition: { '$ref': 'has_permission' },
-          action: { set: { target: 'secure_area.isVisible', value: true } },
-          priority: 1
-        }]
-      };
-
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
-
-      const dependencies = dependencyGraph.getDependencies('secure_area');
-      expect(dependencies).toContain('user_role');
-      expect(dependencies).toContain('permission_level');
     });
   });
 
@@ -209,8 +165,11 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock)
+        .mockReturnValueOnce(['field_b'])
+        .mockReturnValueOnce(['field_a']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       expect(() => {
         dependencyGraph.validateNoCycles(ruleSet);
@@ -236,8 +195,12 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock)
+        .mockReturnValueOnce(['field_b'])
+        .mockReturnValueOnce(['field_c'])
+        .mockReturnValueOnce(['field_a']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       expect(() => {
         dependencyGraph.validateNoCycles(ruleSet);
@@ -253,8 +216,9 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue(['external_counter']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       expect(() => {
         dependencyGraph.validateNoCycles(ruleSet);
@@ -277,8 +241,9 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue(['source_field']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const invalidated = dependencyGraph.getInvalidatedFields(['source_field']);
       expect(invalidated).toContain('dependent_a');
@@ -299,8 +264,11 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock)
+        .mockReturnValueOnce(['field_1'])
+        .mockReturnValueOnce(['field_2']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const invalidated = dependencyGraph.getInvalidatedFields(['field_1', 'field_2']);
       expect(invalidated).toContain('dependent_a');
@@ -311,9 +279,10 @@ describe('DependencyGraph', () => {
   describe('Edge Cases', () => {
     test('should handle empty rule sets', () => {
       const ruleSet: RuleSet = {};
-      
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue([]);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       expect(dependencyGraph.getDependencies('non_existent')).toEqual([]);
       expect(dependencyGraph.getDependents('non_existent')).toEqual([]);
@@ -328,8 +297,9 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue([]);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       expect(dependencyGraph.getDependencies('standalone_field')).toEqual([]);
     });
@@ -339,10 +309,12 @@ describe('DependencyGraph', () => {
         complex_field: [{
           condition: {
             and: [
-              { or: [
-                { '==': [{ var: ['field_a'] }, 'value1'] },
-                { '==': [{ var: ['field_b'] }, 'value2'] }
-              ]},
+              {
+                or: [
+                  { '==': [{ var: ['field_a'] }, 'value1'] },
+                  { '==': [{ var: ['field_b'] }, 'value2'] }
+                ]
+              },
               { '!=': [{ var: ['field_c.nested'] }, null] }
             ]
           },
@@ -351,8 +323,9 @@ describe('DependencyGraph', () => {
         }]
       };
 
-      mockExtractActionDependencies.mockReturnValue([]);
-      dependencyGraph.buildFromRuleSet(ruleSet, mockExtractActionDependencies);
+      (mockVisitor.visitLogic as jest.Mock).mockReturnValue(['field_a', 'field_b', 'field_c']);
+      (mockVisitor.visitAction as jest.Mock).mockReturnValue([]);
+      dependencyGraph.buildFromRuleSet(ruleSet);
 
       const dependencies = dependencyGraph.getDependencies('complex_field');
       expect(dependencies).toContain('field_a');

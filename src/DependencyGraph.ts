@@ -1,6 +1,11 @@
 import { Logic } from './LogicResolver.js';
 import { Action } from './ActionHandler.js';
 
+export interface DependencyVisitor {
+  visitLogic(logic: Logic): string[];
+  visitAction(action: Action): string[];
+}
+
 export interface FieldRule {
   condition: Logic;
   action: Action;
@@ -15,17 +20,15 @@ export interface RuleSet {
 export class DependencyGraph {
   private dependencyGraph: Map<string, Set<string>> = new Map();
   private reverseDependencyGraph: Map<string, Set<string>> = new Map();
-  private sharedRules: Record<string, Logic> = {};
+  private visitor: DependencyVisitor;
 
-  constructor(sharedRules: Record<string, Logic> = {}) {
-    this.sharedRules = sharedRules;
+  constructor(
+    visitor: DependencyVisitor
+  ) {
+    this.visitor = visitor;
   }
 
-  updateSharedRules(sharedRules: Record<string, Logic>): void {
-    this.sharedRules = { ...this.sharedRules, ...sharedRules };
-  }
-
-  buildFromRuleSet(ruleSet: RuleSet, extractActionDependencies: (action: Action) => string[]): void {
+  buildFromRuleSet(ruleSet: RuleSet): void {
     this.dependencyGraph.clear();
     this.reverseDependencyGraph.clear();
 
@@ -33,8 +36,8 @@ export class DependencyGraph {
       const dependencies = new Set<string>();
 
       for (const rule of rules) {
-        const conditionDeps = this.extractDependencies(rule.condition);
-        const actionDeps = extractActionDependencies(rule.action);
+        const conditionDeps = this.visitor.visitLogic(rule.condition);
+        const actionDeps = this.visitor.visitAction(rule.action);
 
         for (const dep of [...conditionDeps, ...actionDeps]) {
           dependencies.add(dep);
@@ -101,7 +104,7 @@ export class DependencyGraph {
     while (toProcess.length > 0) {
       const fieldName = toProcess.shift()!;
       const dependentFields = this.reverseDependencyGraph.get(fieldName) || new Set();
-      
+
       for (const dependentField of dependentFields) {
         if (!invalidatedFields.has(dependentField)) {
           invalidatedFields.add(dependentField);
@@ -113,52 +116,4 @@ export class DependencyGraph {
     return Array.from(invalidatedFields);
   }
 
-  private extractDependencies(logic: Logic): string[] {
-    const dependencies: string[] = [];
-
-    if (typeof logic === 'object' && logic !== null && !Array.isArray(logic)) {
-      for (const [operator, operands] of Object.entries(logic)) {
-        if (operator === 'var') {
-          const path = Array.isArray(operands) ? operands[0] : operands;
-          if (typeof path === 'string') {
-            const fieldName = path.includes('@') ? path.split('@')[0] : path.split('.')[0];
-            if (fieldName !== '$') {
-              dependencies.push(fieldName);
-            }
-          }
-        } else if (operator === '$ref') {
-          const refName = Array.isArray(operands) ? operands[0] : operands;
-          if (this.sharedRules[refName]) {
-            dependencies.push(...this.extractDependencies(this.sharedRules[refName]));
-          }
-        } else if (operator === 'lookup') {
-          const lookupOperands = Array.isArray(operands) ? operands : [operands];
-          if (lookupOperands.length > 1) {
-            dependencies.push(...this.extractDependencies(lookupOperands[1]));
-          }
-        } else if (operator === 'varTable') {
-          const operandArray = Array.isArray(operands) ? operands : [operands];
-          for (const operand of operandArray) {
-            if (typeof operand === 'string' && operand.includes('@')) {
-              const fieldPath = operand.split('@')[0];
-              if (fieldPath !== '$') {
-                dependencies.push(fieldPath);
-              }
-            }
-          }
-        } else {
-          const operandArray = Array.isArray(operands) ? operands : [operands];
-          for (const operand of operandArray) {
-            dependencies.push(...this.extractDependencies(operand));
-          }
-        }
-      }
-    } else if (Array.isArray(logic)) {
-      for (const item of logic) {
-        dependencies.push(...this.extractDependencies(item));
-      }
-    }
-
-    return dependencies;
-  }
 }
