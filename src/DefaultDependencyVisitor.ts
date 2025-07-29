@@ -116,7 +116,7 @@ class VarTableOperatorHandler implements OperatorHandler {
   handle(operands: any): string[] {
     const operandArray = DependencyUtils.normalizeToArray(operands);
     const dependencies: string[] = [];
-    
+
     for (const operand of operandArray) {
       if (typeof operand === 'string' && operand.includes('@')) {
         const fieldPath = operand.split('@')[0];
@@ -136,7 +136,7 @@ class DefaultOperatorHandler implements OperatorHandler {
   handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): string[] {
     const operandArray = DependencyUtils.normalizeToArray(operands);
     const dependencies: string[] = [];
-    
+
     for (const operand of operandArray) {
       dependencies.push(...visitor.visitLogicInternal(operand, visited));
     }
@@ -215,6 +215,7 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
     const actionType = Object.keys(action)[0];
     const payload = (action as any)[actionType];
 
+    // Check actions that may reference other fields
     switch (actionType) {
       case 'copy':
         return [payload.source];
