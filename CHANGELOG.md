@@ -50,7 +50,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Observer Pattern** - Event system for custom integrations
 
 ### Testing
-- **289 test cases** with comprehensive coverage
+- **291 test cases** with comprehensive coverage
 - **Integration tests** for real-world scenarios
 - **Edge case handling** for robust operation
 - **Performance tests** for optimization validation
