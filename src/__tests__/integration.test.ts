@@ -1,5 +1,4 @@
 import { RuleEngine, RuleSet } from '../RuleEngine.js';
-import { LogicResolver } from '../LogicResolver.js';
 
 describe('Integration Tests', () => {
   describe('E-commerce Product Configuration', () => {

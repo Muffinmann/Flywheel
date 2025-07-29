@@ -220,6 +220,8 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
         return [payload.source];
       case 'calculate':
         return this.visitLogic(payload.formula);
+      case 'calculateState':
+        return this.visitLogic(payload.formula);
       case 'batch':
         return payload.flatMap((subAction: Action) => this.visitAction(subAction));
       default:
