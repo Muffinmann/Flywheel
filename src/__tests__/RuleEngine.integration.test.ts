@@ -1,4 +1,5 @@
-import { RuleEngine, RuleSet, FieldRule } from '../RuleEngine.js';
+import { RuleEngine } from '../RuleEngine.js';
+import { RuleSet, FieldRule } from '../DependencyGraph.js';
 
 describe('RuleEngine Integration', () => {
   let engine: RuleEngine;
@@ -341,8 +342,11 @@ describe('RuleEngine Integration', () => {
     test('should integrate custom action handlers', () => {
       const logs: string[] = [];
 
-      engine.registerActionHandler('log', (payload) => {
-        logs.push(payload.message);
+      engine.registerCustomAction('log', {
+        handler: (payload) => {
+          logs.push(payload.message);
+        },
+        targetExtractor: () => []
       });
 
       const ruleSet: RuleSet = {

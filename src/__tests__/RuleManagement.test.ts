@@ -1,5 +1,5 @@
 import { RuleManagement, CompiledRuleSet, RuleFile } from '../RuleManagement.js';
-import { RuleSet } from '../RuleEngine.js';
+import { RuleSet } from '../DependencyGraph.js';
 
 describe('RuleManagement', () => {
   describe('Folder Structure Validation', () => {

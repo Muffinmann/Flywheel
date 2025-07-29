@@ -2,6 +2,7 @@ export { LogicResolver, Logic, CustomLogicRegistration, DebugTrace } from './Log
 export {
   RuleEngine,
   RuleEngineOptions,
+  CustomActionConfig,
 } from './RuleEngine.js';
 export {
   RuleManagement,

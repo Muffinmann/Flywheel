@@ -390,8 +390,11 @@ describe('RuleEngine', () => {
     test('should register and use custom action handlers', () => {
       const logs: string[] = [];
 
-      engine.registerActionHandler('log', (payload) => {
-        logs.push(payload.message);
+      engine.registerCustomAction('log', {
+        handler: (payload) => {
+          logs.push(payload.message);
+        },
+        targetExtractor: () => []
       });
 
       const ruleSet: RuleSet = {

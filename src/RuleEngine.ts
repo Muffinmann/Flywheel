@@ -55,19 +55,32 @@ import { fieldStateOperator } from './FieldStateOperators.js';
  * })
  * ```
  * 
- * You can also register custom action handlers via:
+ * You can also register custom actions via:
  * ```ts
  * const engine = new RuleEngine()
- * const actionType = "log"
- * function customLogAction(payload: any, context: any){
- *  console.log("Rule log:", payload.message)
- * }
- * engine.registerActionHandler(actionType, customLogAction)
+ * 
+ * engine.registerCustomAction('log', {
+ *   handler: (payload, context) => {
+ *     console.log("Rule log:", payload.message)
+ *   },
+ *   targetExtractor: (payload) => [] // log actions don't target fields
+ * })
+ * 
+ * // For actions that modify field properties
+ * engine.registerCustomAction('multiSet', {
+ *   handler: (payload, context) => {
+ *     for (const { target, value } of payload.targets) {
+ *       // Set multiple field properties
+ *     }
+ *   },
+ *   targetExtractor: (payload) => payload.targets.map(t => t.target)
+ * })
  * ```
  * ```json
  * {"log": {message: "rule log"}}
+ * {"multiSet": {targets: [{target: "field1.prop", value: true}]}}
  * ```
- * Be careful: actions are internally managed by a `Map<ActionType, ActionHandler>`, which means if the type is same as the built-in type, it will override the built-in handler.
+ * Both the handler and targetExtractor are required for proper conflict detection and dependency tracking.
  * 
  * A "RuleSet" is defined as the collection of fields and their rules:
  * ```ts
@@ -224,6 +237,11 @@ export interface RuleEngineOptions {
   onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, any>;
 }
 
+export interface CustomActionConfig {
+  handler: (payload: any, context: any) => void;
+  targetExtractor: (payload: any) => string[];
+}
+
 export class RuleEngine {
   private logicResolver: LogicResolver;
   private actionHandler: ActionHandler;
@@ -236,6 +254,7 @@ export class RuleEngine {
   private sharedRules: Record<string, Logic> = {};
   private context: Record<string, any> = {};
   private options: RuleEngineOptions;
+  private actionTargetExtractors: Map<string, (payload: any) => string[]> = new Map();
 
   constructor(options: RuleEngineOptions = {}) {
     this.logicResolver = new LogicResolver();
@@ -280,6 +299,104 @@ export class RuleEngine {
     this.logicResolver.registerCustomLogic([
       { operator: 'fieldState', operand: fieldStateOperator }
     ]);
+
+    // Register built-in actions
+    this.initializeBuiltInActions();
+  }
+
+  private initializeBuiltInActions(): void {
+    // Register all built-in actions with their handlers and target extractors
+    this.registerCustomAction('set', {
+      handler: (payload) => {
+        this.context[payload.target] = payload.value;
+        const invalidatedFields = this.dependencyGraph.getInvalidatedFields([payload.target]);
+        this.fieldStateManager.invalidateCache(invalidatedFields);
+      },
+      targetExtractor: (payload) => [payload.target]
+    });
+
+    this.registerCustomAction('setState', {
+      handler: (payload) => {
+        this.fieldStateManager.setFieldProperty(payload.target, payload.value);
+        const dotIndex = payload.target.indexOf('.');
+        if (dotIndex !== -1) {
+          const fieldName = payload.target.substring(0, dotIndex);
+          const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
+          this.fieldStateManager.invalidateCache(invalidatedFields);
+        }
+      },
+      targetExtractor: (payload) => [payload.target]
+    });
+
+    this.registerCustomAction('copy', {
+      handler: (payload, context) => {
+        const value = this.getFieldValue(payload.source, context);
+        this.context[payload.target] = value;
+        const invalidatedFields = this.dependencyGraph.getInvalidatedFields([payload.target]);
+        this.fieldStateManager.invalidateCache(invalidatedFields);
+      },
+      targetExtractor: (payload) => [payload.target]
+    });
+
+    this.registerCustomAction('calculate', {
+      handler: (payload, context) => {
+        const value = this.logicResolver.resolve(payload.formula, context);
+        this.context[payload.target] = value;
+        const invalidatedFields = this.dependencyGraph.getInvalidatedFields([payload.target]);
+        this.fieldStateManager.invalidateCache(invalidatedFields);
+      },
+      targetExtractor: (payload) => [payload.target]
+    });
+
+    this.registerCustomAction('calculateState', {
+      handler: (payload, context) => {
+        const value = this.logicResolver.resolve(payload.formula, context);
+        this.fieldStateManager.setFieldProperty(payload.target, value);
+        const dotIndex = payload.target.indexOf('.');
+        if (dotIndex !== -1) {
+          const fieldName = payload.target.substring(0, dotIndex);
+          const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
+          this.fieldStateManager.invalidateCache(invalidatedFields);
+        }
+      },
+      targetExtractor: (payload) => [payload.target]
+    });
+
+    this.registerCustomAction('trigger', {
+      handler: (payload) => {
+        this.options.onEvent?.(payload.event, payload.params);
+      },
+      targetExtractor: () => [] // trigger actions don't target fields
+    });
+
+    this.registerCustomAction('batch', {
+      handler: (payload, context) => {
+        for (const action of payload) {
+          this.actionHandler.executeAction(action, context);
+        }
+      },
+      targetExtractor: (payload) => payload.flatMap((subAction: Action) => this.extractActionTargets(subAction))
+    });
+  }
+
+  private getFieldValue(path: string, context: any): any {
+    if (path.includes('@')) {
+      // Handle lookup table syntax
+      const [fieldPath, lookupSpec] = path.split('@');
+      const [tableName, property] = lookupSpec.split('.');
+      const keyValue = this.logicResolver.resolve({ var: [fieldPath] }, context);
+      
+      // Get lookup table and resolve the value
+      const table = this.lookupManager.getLookupTable(tableName);
+      if (!table) {
+        throw new Error(`Lookup table '${tableName}' not found`);
+      }
+      
+      const record = table.table.find(item => item[table.primaryKey] === keyValue);
+      return record ? record[property] : undefined;
+    }
+    
+    return this.logicResolver.resolve({ var: [path] }, context);
   }
 
   getLogicResolver(): LogicResolver {
@@ -301,30 +418,44 @@ export class RuleEngine {
     this.lookupManager.registerLookupTables(tables);
   }
 
-  registerActionHandler(actionType: string, handler: (payload: any, context: any) => void): void {
-    this.actionHandler.registerActionHandler(actionType, handler);
+  /**
+   * Register a custom action with both its handler and target extractor.
+   * This ensures proper conflict detection and dependency tracking for custom actions.
+   * 
+   * @param actionType - The action type identifier
+   * @param config - Configuration containing both handler and target extractor
+   * 
+   * @example
+   * ```ts
+   * engine.registerCustomAction('multiSet', {
+   *   handler: (payload, context) => {
+   *     for (const { target, value } of payload.targets) {
+   *       // Set multiple field properties
+   *       engine.setFieldProperty(target, value);
+   *     }
+   *   },
+   *   targetExtractor: (payload) => payload.targets.map(t => t.target)
+   * });
+   * ```
+   */
+  registerCustomAction(actionType: string, config: CustomActionConfig): void {
+    this.actionHandler.registerActionHandler(actionType, config.handler);
+    this.actionTargetExtractors.set(actionType, config.targetExtractor);
   }
 
   private extractActionTargets(action: Action): string[] {
     const actionType = Object.keys(action)[0];
     const payload = (action as any)[actionType];
 
-    switch (actionType) {
-      case 'set':
-        return [payload.target];
-      case 'setState':
-        return [payload.target];
-      case 'copy':
-        return [payload.target];
-      case 'calculate':
-        return [payload.target];
-      case 'calculateState':
-        return [payload.target];
-      case 'batch':
-        return payload.flatMap((subAction: Action) => this.extractActionTargets(subAction));
-      default:
-        return [];
+    // Use registered extractor if available
+    const extractor = this.actionTargetExtractors.get(actionType);
+    if (extractor) {
+      return extractor(payload);
     }
+
+    // Fallback: return empty array for unknown action types
+    // This allows custom actions to exist without target extraction if not needed
+    return [];
   }
 
   updateField(fieldUpdates: Record<string, any>): string[] {

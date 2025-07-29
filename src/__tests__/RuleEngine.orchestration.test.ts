@@ -1,4 +1,5 @@
-import { RuleEngine, RuleSet } from '../RuleEngine.js';
+import { RuleEngine } from '../RuleEngine.js';
+import { RuleSet } from '../DependencyGraph.js';
 
 describe('RuleEngine Orchestration', () => {
   let engine: RuleEngine;
@@ -104,9 +105,12 @@ describe('RuleEngine Orchestration', () => {
         }
       });
 
-      engine.registerActionHandler('track', (payload, context) => {
-        // Simplified tracking - just add to evaluation order
-        evaluationOrder.push(payload.fieldName);
+      engine.registerCustomAction('track', {
+        handler: (payload, context) => {
+          // Simplified tracking - just add to evaluation order
+          evaluationOrder.push(payload.fieldName);
+        },
+        targetExtractor: () => []
       });
 
       const ruleSet: RuleSet = {
@@ -135,8 +139,11 @@ describe('RuleEngine Orchestration', () => {
     test('should orchestrate rule priority execution', () => {
       const executionOrder: number[] = [];
       
-      engine.registerActionHandler('track_priority', (payload) => {
-        executionOrder.push(payload.priority);
+      engine.registerCustomAction('track_priority', {
+        handler: (payload) => {
+          executionOrder.push(payload.priority);
+        },
+        targetExtractor: () => []
       });
 
       const ruleSet: RuleSet = {
@@ -296,8 +303,11 @@ describe('RuleEngine Orchestration', () => {
     test('should orchestrate caching across evaluations', () => {
       let evaluationCount = 0;
       
-      engine.registerActionHandler('count_evaluation', () => {
-        evaluationCount++;
+      engine.registerCustomAction('count_evaluation', {
+        handler: () => {
+          evaluationCount++;
+        },
+        targetExtractor: () => []
       });
 
       const ruleSet: RuleSet = {

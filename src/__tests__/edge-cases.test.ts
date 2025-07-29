@@ -1,4 +1,5 @@
-import { RuleEngine, RuleSet } from '../RuleEngine.js';
+import { RuleEngine } from '../RuleEngine.js';
+import { RuleSet } from '../DependencyGraph.js';
 import { LogicResolver } from '../LogicResolver.js';
 import { RuleManagement } from '../RuleManagement.js';
 
@@ -230,8 +231,11 @@ describe('Edge Cases and Error Handling', () => {
     });
 
     test('should handle actions that throw errors', () => {
-      engine.registerActionHandler('error_action', () => {
-        throw new Error('Custom action error');
+      engine.registerCustomAction('error_action', {
+        handler: () => {
+          throw new Error('Custom action error');
+        },
+        targetExtractor: () => []
       });
 
       const ruleSet: RuleSet = {

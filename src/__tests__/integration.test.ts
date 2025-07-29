@@ -1,4 +1,5 @@
-import { RuleEngine, RuleSet } from '../RuleEngine.js';
+import { RuleEngine } from '../RuleEngine.js';
+import { RuleSet } from '../DependencyGraph.js';
 
 describe('Integration Tests', () => {
   describe('E-commerce Product Configuration', () => {
