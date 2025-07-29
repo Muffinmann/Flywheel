@@ -5,42 +5,69 @@ describe('ActionHandler', () => {
   let actionHandler: ActionHandler;
   let logicResolver: LogicResolver;
   let mockOnEvent: jest.Mock;
-  let mockOnFieldPropertySet: jest.Mock;
+  let mockOnFieldValueSet: jest.Mock;
+  let mockOnFieldStateSet: jest.Mock;
 
   beforeEach(() => {
     logicResolver = new LogicResolver();
     mockOnEvent = jest.fn();
-    mockOnFieldPropertySet = jest.fn();
+    mockOnFieldValueSet = jest.fn();
+    mockOnFieldStateSet = jest.fn();
     
     actionHandler = new ActionHandler(logicResolver, {
       onEvent: mockOnEvent,
-      onFieldPropertySet: mockOnFieldPropertySet
+      onFieldValueSet: mockOnFieldValueSet,
+      onFieldStateSet: mockOnFieldStateSet
     });
   });
 
   describe('Built-in Actions', () => {
-    test('should handle SET action', () => {
+    test('should handle SET action for field values', () => {
       const action: Action = {
-        set: { target: 'field.isVisible', value: true }
+        set: { target: 'field', value: 'value' }
       };
 
       actionHandler.executeAction(action, {});
 
-      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.isVisible', true);
+      expect(mockOnFieldValueSet).toHaveBeenCalledWith('field', 'value');
     });
 
-    test('should handle COPY action', () => {
+    test('should handle SET action for field values only', () => {
       const action: Action = {
-        copy: { source: 'sourceField', target: 'field.calculatedValue' }
+        set: { target: 'field_value', value: 'test_value' }
+      };
+
+      actionHandler.executeAction(action, {});
+
+      // set action now only handles field values, not field state
+      expect(mockOnFieldValueSet).toHaveBeenCalledWith('field_value', 'test_value');
+      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
+    });
+
+    test('should handle setState action', () => {
+      const action: Action = {
+        setState: { target: 'field.isVisible', value: true }
+      };
+
+      actionHandler.executeAction(action, {});
+
+      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.isVisible', true);
+    });
+
+    test('should handle COPY action for field values', () => {
+      const action: Action = {
+        copy: { source: 'sourceField', target: 'target_field' }
       };
       const context = { sourceField: 'copied_value' };
 
       actionHandler.executeAction(action, context);
 
-      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.calculatedValue', 'copied_value');
+      // copy action now only handles field values
+      expect(mockOnFieldValueSet).toHaveBeenCalledWith('target_field', 'copied_value');
+      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
     });
 
-    test('should handle CALCULATE action', () => {
+    test('should handle CALCULATE action with field state target', () => {
       const action: Action = {
         calculate: {
           target: 'field.calculatedValue',
@@ -51,7 +78,9 @@ describe('ActionHandler', () => {
 
       actionHandler.executeAction(action, context);
 
-      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.calculatedValue', 15);
+      // calculate action always sets field state properties
+      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.calculatedValue', 15);
+      expect(mockOnFieldValueSet).not.toHaveBeenCalled();
     });
 
     test('should handle TRIGGER action', () => {
@@ -67,16 +96,18 @@ describe('ActionHandler', () => {
     test('should handle BATCH action', () => {
       const action: Action = {
         batch: [
-          { set: { target: 'field.isVisible', value: true } },
-          { set: { target: 'field.isRequired', value: true } }
+          { setState: { target: 'field.isVisible', value: true } },
+          { setState: { target: 'field.isRequired', value: true } }
         ]
       };
 
       actionHandler.executeAction(action, {});
 
-      expect(mockOnFieldPropertySet).toHaveBeenCalledTimes(2);
-      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.isVisible', true);
-      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.isRequired', true);
+      // Both actions use setState for field state properties
+      expect(mockOnFieldStateSet).toHaveBeenCalledTimes(2);
+      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.isVisible', true);
+      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.isRequired', true);
+      expect(mockOnFieldValueSet).not.toHaveBeenCalled();
     });
   });
 
@@ -106,27 +137,34 @@ describe('ActionHandler', () => {
       actionHandler.registerActionHandler('set', customSetHandler);
 
       const action: Action = {
-        set: { target: 'field.isVisible', value: true }
+        set: { target: 'field_value', value: 'test' }
       };
 
       actionHandler.executeAction(action, {});
 
-      expect(customSetHandler).toHaveBeenCalledWith({ target: 'field.isVisible', value: true }, {});
-      expect(mockOnFieldPropertySet).not.toHaveBeenCalled();
+      expect(customSetHandler).toHaveBeenCalledWith({ target: 'field_value', value: 'test' }, {});
+      expect(mockOnFieldValueSet).not.toHaveBeenCalled();
+      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
     });
   });
 
   describe('Action Target Extraction', () => {
     test('should extract targets from SET action', () => {
-      const action: Action = { set: { target: 'field.isVisible', value: true } };
+      const action: Action = { set: { target: 'field_value', value: true } };
+      const targets = actionHandler.extractActionTargets(action);
+      expect(targets).toEqual(['field_value']);
+    });
+
+    test('should extract targets from setState action', () => {
+      const action: Action = { setState: { target: 'field.isVisible', value: true } };
       const targets = actionHandler.extractActionTargets(action);
       expect(targets).toEqual(['field.isVisible']);
     });
 
     test('should extract targets from COPY action', () => {
-      const action: Action = { copy: { source: 'src', target: 'field.calculatedValue' } };
+      const action: Action = { copy: { source: 'src', target: 'target_field' } };
       const targets = actionHandler.extractActionTargets(action);
-      expect(targets).toEqual(['field.calculatedValue']);
+      expect(targets).toEqual(['target_field']);
     });
 
     test('should extract targets from CALCULATE action', () => {
@@ -140,12 +178,12 @@ describe('ActionHandler', () => {
     test('should extract targets from BATCH action', () => {
       const action: Action = {
         batch: [
-          { set: { target: 'field1.isVisible', value: true } },
-          { copy: { source: 'src', target: 'field2.calculatedValue' } }
+          { setState: { target: 'field1.isVisible', value: true } },
+          { copy: { source: 'src', target: 'field2_value' } }
         ]
       };
       const targets = actionHandler.extractActionTargets(action);
-      expect(targets).toEqual(['field1.isVisible', 'field2.calculatedValue']);
+      expect(targets).toEqual(['field1.isVisible', 'field2_value']);
     });
 
     test('should return empty array for actions without targets', () => {
@@ -185,7 +223,13 @@ describe('ActionHandler', () => {
     });
 
     test('should return empty array for actions without dependencies', () => {
-      const action: Action = { set: { target: 'field.isVisible', value: true } };
+      const action: Action = { set: { target: 'field_value', value: true } };
+      const deps = actionHandler.extractActionDependencies(action);
+      expect(deps).toEqual([]);
+    });
+
+    test('should return empty array for setState actions without dependencies', () => {
+      const action: Action = { setState: { target: 'field.isVisible', value: true } };
       const deps = actionHandler.extractActionDependencies(action);
       expect(deps).toEqual([]);
     });
@@ -194,13 +238,14 @@ describe('ActionHandler', () => {
   describe('Edge Cases', () => {
     test('should handle COPY action with complex var expressions', () => {
       const action: Action = {
-        copy: { source: 'nested.field.value', target: 'field.calculatedValue' }
+        copy: { source: 'nested.field.value', target: 'target_field' }
       };
       const context = { nested: { field: { value: 'deep_value' } } };
 
       actionHandler.executeAction(action, context);
 
-      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.calculatedValue', 'deep_value');
+      expect(mockOnFieldValueSet).toHaveBeenCalledWith('target_field', 'deep_value');
+      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
     });
 
     test('should handle CALCULATE action with nested logic', () => {
@@ -219,7 +264,8 @@ describe('ActionHandler', () => {
 
       actionHandler.executeAction(action, context);
 
-      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.result', 13);
+      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.result', 13);
+      expect(mockOnFieldValueSet).not.toHaveBeenCalled();
     });
 
     test('should handle TRIGGER action without params', () => {

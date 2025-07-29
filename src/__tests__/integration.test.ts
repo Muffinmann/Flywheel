@@ -26,7 +26,7 @@ describe('Integration Tests', () => {
         // Size options only visible for clothing
         size_selector: [{
           condition: { '$ref': 'product_is_clothing' },
-          action: { set: { target: 'size_selector.isVisible', value: true } },
+          action: { setState: { target: 'size_selector.isVisible', value: true } },
           priority: 1,
           description: 'Show size selector for clothing items'
         }],
@@ -34,7 +34,7 @@ describe('Integration Tests', () => {
         // Premium options only for premium users
         premium_customization: [{
           condition: { '$ref': 'is_premium_user' },
-          action: { set: { target: 'premium_customization.isVisible', value: true } },
+          action: { setState: { target: 'premium_customization.isVisible', value: true } },
           priority: 1,
           description: 'Show premium customization for premium users'
         }],
@@ -42,7 +42,7 @@ describe('Integration Tests', () => {
         // Discount field visible when user has discount code
         discount_field: [{
           condition: { '$ref': 'has_discount_code' },
-          action: { set: { target: 'discount_field.isVisible', value: true } },
+          action: { setState: { target: 'discount_field.isVisible', value: true } },
           priority: 1
         }],
 
@@ -96,7 +96,7 @@ describe('Integration Tests', () => {
         // Express shipping for high-value orders
         express_shipping: [{
           condition: { '>': [{ fieldState: ['total_price.calculatedValue'] }, 100] },
-          action: { set: { target: 'express_shipping.isVisible', value: true } },
+          action: { setState: { target: 'express_shipping.isVisible', value: true } },
           priority: 1,
           description: 'Show express shipping for orders over $100'
         }]
@@ -135,15 +135,15 @@ describe('Integration Tests', () => {
       const ruleSet: RuleSet = {
         shipping_cost: [{
           condition: { '==': [{ var: ['shipping_method'] }, 'express'] },
-          action: { set: { target: 'shipping_cost.calculatedValue', value: 25 } },
+          action: { setState: { target: 'shipping_cost.calculatedValue', value: 25 } },
           priority: 1
         }, {
           condition: { '==': [{ var: ['shipping_method'] }, 'standard'] },
-          action: { set: { target: 'shipping_cost.calculatedValue', value: 5 } },
+          action: { setState: { target: 'shipping_cost.calculatedValue', value: 5 } },
           priority: 2
         }, {
           condition: { '==': [{ var: ['shipping_method'] }, 'free'] },
-          action: { set: { target: 'shipping_cost.calculatedValue', value: 0 } },
+          action: { setState: { target: 'shipping_cost.calculatedValue', value: 0 } },
           priority: 3
         }],
 
@@ -165,7 +165,7 @@ describe('Integration Tests', () => {
 
         free_shipping_notice: [{
           condition: { '==': [{ fieldState: ['shipping_cost.calculatedValue'] }, 0] },
-          action: { set: { target: 'free_shipping_notice.isVisible', value: true } },
+          action: { setState: { target: 'free_shipping_notice.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -217,7 +217,7 @@ describe('Integration Tests', () => {
         email_field: [
           {
             condition: { '!=': [{ var: ['email'] }, ''] },
-            action: { set: { target: 'email_field.isRequired', value: false } },
+            action: { setState: { target: 'email_field.isRequired', value: false } },
             priority: 1
           },
           {
@@ -236,7 +236,7 @@ describe('Integration Tests', () => {
         password_confirm: [
           {
             condition: { '!=': [{ var: ['password'] }, ''] },
-            action: { set: { target: 'password_confirm.isVisible', value: true } },
+            action: { setState: { target: 'password_confirm.isVisible', value: true } },
             priority: 1
           }
         ],
@@ -253,8 +253,8 @@ describe('Integration Tests', () => {
             },
             action: {
               batch: [
-                { set: { target: 'password_confirm.isValid', value: false } },
-                { set: { target: 'password_confirm.errorMessage', value: 'Passwords do not match' } }
+                { setState: { target: 'password_confirm.isValid', value: false } },
+                { setState: { target: 'password_confirm.errorMessage', value: 'Passwords do not match' } }
               ]
             },
             priority: 1
@@ -269,8 +269,8 @@ describe('Integration Tests', () => {
             },
             action: {
               batch: [
-                { set: { target: 'password_confirm.isValid', value: true } },
-                { set: { target: 'password_confirm.errorMessage', value: '' } }
+                { setState: { target: 'password_confirm.isValid', value: true } },
+                { setState: { target: 'password_confirm.errorMessage', value: '' } }
               ]
             },
             priority: 2
@@ -286,7 +286,7 @@ describe('Integration Tests', () => {
               { '==': [{ fieldState: ['password_confirm.isValid'] }, true] }
             ]
           },
-          action: { set: { target: 'submit_button.isVisible', value: true } },
+          action: { setState: { target: 'submit_button.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -352,14 +352,14 @@ describe('Integration Tests', () => {
       const ruleSet: RuleSet = {
         bilateral_option: [{
           condition: { '==': [{ varTable: ['selected_device@devices.bilateral'] }, true] },
-          action: { set: { target: 'bilateral_option.isVisible', value: true } },
+          action: { setState: { target: 'bilateral_option.isVisible', value: true } },
           priority: 1,
           description: 'Show bilateral option for bilateral devices'
         }],
 
         prosthetic_options: [{
           condition: { '==': [{ varTable: ['selected_device@devices.category'] }, 'prosthetic'] },
-          action: { set: { target: 'prosthetic_options.isVisible', value: true } },
+          action: { setState: { target: 'prosthetic_options.isVisible', value: true } },
           priority: 1,
           description: 'Show prosthetic-specific options'
         }],
@@ -425,7 +425,7 @@ describe('Integration Tests', () => {
       const ruleSet: RuleSet = {
         cached_field: [{
           condition: { track_eval: [{ var: ['trigger'] }] },
-          action: { set: { target: 'cached_field.isVisible', value: true } },
+          action: { setState: { target: 'cached_field.isVisible', value: true } },
           priority: 1
         }]
       };

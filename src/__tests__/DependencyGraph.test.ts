@@ -17,7 +17,7 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         field_a: [{
           condition: { '==': [{ var: ['field_b'] }, 'value'] },
-          action: { set: { target: 'field_a.isVisible', value: true } },
+          action: { setState: { target: 'field_a.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -75,7 +75,7 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         dependent_field: [{
           condition: { '==': [{ var: ['source_field'] }, 'trigger'] },
-          action: { set: { target: 'dependent_field.isVisible', value: true } },
+          action: { setState: { target: 'dependent_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -99,7 +99,7 @@ describe('DependencyGraph', () => {
               { var: ['field_b'] }
             ]
           },
-          action: { set: { target: 'complex_field.isVisible', value: true } },
+          action: { setState: { target: 'complex_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -119,7 +119,7 @@ describe('DependencyGraph', () => {
           condition: {
             lookup: ['table_name', { var: ['key_field'] }, 'property']
           },
-          action: { set: { target: 'lookup_field.isVisible', value: true } },
+          action: { setState: { target: 'lookup_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -136,7 +136,7 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         field_with_dollar: [{
           condition: { '==': [{ var: ['$.context'] }, 'value'] },
-          action: { set: { target: 'field_with_dollar.isVisible', value: true } },
+          action: { setState: { target: 'field_with_dollar.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -155,12 +155,12 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         field_a: [{
           condition: { '==': [{ var: ['field_b'] }, 'trigger'] },
-          action: { set: { target: 'field_a.isVisible', value: true } },
+          action: { setState: { target: 'field_a.isVisible', value: true } },
           priority: 1
         }],
         field_b: [{
           condition: { '==': [{ var: ['field_a'] }, 'trigger'] },
-          action: { set: { target: 'field_b.isVisible', value: true } },
+          action: { setState: { target: 'field_b.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -180,17 +180,17 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         field_a: [{
           condition: { '==': [{ var: ['field_b'] }, 'trigger'] },
-          action: { set: { target: 'field_a.isVisible', value: true } },
+          action: { setState: { target: 'field_a.isVisible', value: true } },
           priority: 1
         }],
         field_b: [{
           condition: { '==': [{ var: ['field_c'] }, 'trigger'] },
-          action: { set: { target: 'field_b.isVisible', value: true } },
+          action: { setState: { target: 'field_b.isVisible', value: true } },
           priority: 1
         }],
         field_c: [{
           condition: { '==': [{ var: ['field_a'] }, 'trigger'] },
-          action: { set: { target: 'field_c.isVisible', value: true } },
+          action: { setState: { target: 'field_c.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -211,7 +211,7 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         counter_field: [{
           condition: { '>': [{ var: ['external_counter'] }, 0] }, // Reference external field, not self
-          action: { set: { target: 'counter_field.isVisible', value: true } },
+          action: { setState: { target: 'counter_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -231,12 +231,12 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         dependent_a: [{
           condition: { '==': [{ var: ['source_field'] }, 'trigger'] },
-          action: { set: { target: 'dependent_a.isVisible', value: true } },
+          action: { setState: { target: 'dependent_a.isVisible', value: true } },
           priority: 1
         }],
         dependent_b: [{
           condition: { '==': [{ var: ['source_field'] }, 'show'] },
-          action: { set: { target: 'dependent_b.isVisible', value: true } },
+          action: { setState: { target: 'dependent_b.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -254,12 +254,12 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         dependent_a: [{
           condition: { '==': [{ var: ['field_1'] }, 'trigger'] },
-          action: { set: { target: 'dependent_a.isVisible', value: true } },
+          action: { setState: { target: 'dependent_a.isVisible', value: true } },
           priority: 1
         }],
         dependent_b: [{
           condition: { '==': [{ var: ['field_2'] }, 'trigger'] },
-          action: { set: { target: 'dependent_b.isVisible', value: true } },
+          action: { setState: { target: 'dependent_b.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -292,7 +292,7 @@ describe('DependencyGraph', () => {
       const ruleSet: RuleSet = {
         standalone_field: [{
           condition: { '==': [1, 1] },
-          action: { set: { target: 'standalone_field.isVisible', value: true } },
+          action: { setState: { target: 'standalone_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -318,7 +318,7 @@ describe('DependencyGraph', () => {
               { '!=': [{ var: ['field_c.nested'] }, null] }
             ]
           },
-          action: { set: { target: 'complex_field.isVisible', value: true } },
+          action: { setState: { target: 'complex_field.isVisible', value: true } },
           priority: 1
         }]
       };

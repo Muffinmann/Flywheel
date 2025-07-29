@@ -254,7 +254,16 @@ export class RuleEngine {
 
     this.actionHandler = new ActionHandler(this.logicResolver, {
       onEvent: options.onEvent,
-      onFieldPropertySet: (target, value) => {
+      onFieldValueSet: (target, value) => {
+        // Setting field values in the context
+        this.context[target] = value;
+        
+        // Invalidate cache for fields that depend on this field
+        const invalidatedFields = this.dependencyGraph.getInvalidatedFields([target]);
+        this.fieldStateManager.invalidateCache(invalidatedFields);
+      },
+      onFieldStateSet: (target, value) => {
+        // Setting field state properties
         this.fieldStateManager.setFieldProperty(target, value);
 
         // Extract field name from target (format: "fieldName.property") 

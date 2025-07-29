@@ -12,7 +12,7 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         test_field: [{
           condition: { '==': [1, 1] },
-          action: { set: { target: 'test_field.isRequired', value: true } },
+          action: { setState: { target: 'test_field.isRequired', value: true } },
           priority: 1
         }]
       };
@@ -26,7 +26,7 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         dependent: [{
           condition: { '==': [{ var: ['source'] }, 'active'] },
-          action: { set: { target: 'dependent.isVisible', value: true } },
+          action: { setState: { target: 'dependent.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -51,12 +51,12 @@ describe('RuleEngine Orchestration', () => {
         conflict_field: [
           {
             condition: { '==': [1, 1] },
-            action: { set: { target: 'conflict_field.isVisible', value: true } },
+            action: { setState: { target: 'conflict_field.isVisible', value: true } },
             priority: 1
           },
           {
             condition: { '==': [1, 1] },
-            action: { set: { target: 'conflict_field.isVisible', value: false } },
+            action: { setState: { target: 'conflict_field.isVisible', value: false } },
             priority: 1
           }
         ]
@@ -73,7 +73,7 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         lookup_field: [{
           condition: { '==': [{ lookup: ['test_table', { var: ['key'] }, 'status'] }, 'active'] },
-          action: { set: { target: 'lookup_field.isVisible', value: true } },
+          action: { setState: { target: 'lookup_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -175,12 +175,12 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         field1: [{
           condition: { '$ref': 'common_condition' },
-          action: { set: { target: 'field1.isVisible', value: true } },
+          action: { setState: { target: 'field1.isVisible', value: true } },
           priority: 1
         }],
         field2: [{
           condition: { '$ref': 'common_condition' },
-          action: { set: { target: 'field2.isVisible', value: true } },
+          action: { setState: { target: 'field2.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -238,7 +238,7 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         secure_field: [{
           condition: { '==': [{ var: ['user_role'] }, 'admin'] },
-          action: { set: { target: 'secure_field.permissions.write', value: true } },
+          action: { setState: { target: 'secure_field.permissions.write', value: true } },
           priority: 1
         }]
       };
@@ -260,7 +260,7 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         error_field: [{
           condition: { '$ref': 'nonexistent_rule' },
-          action: { set: { target: 'error_field.isVisible', value: true } },
+          action: { setState: { target: 'error_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -276,12 +276,12 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         circular_a: [{
           condition: { '==': [{ var: ['circular_b'] }, 'trigger'] },
-          action: { set: { target: 'circular_a.isVisible', value: true } },
+          action: { setState: { target: 'circular_a.isVisible', value: true } },
           priority: 1
         }],
         circular_b: [{
           condition: { '==': [{ var: ['circular_a'] }, 'trigger'] },
-          action: { set: { target: 'circular_b.isVisible', value: true } },
+          action: { setState: { target: 'circular_b.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -323,7 +323,7 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         dependent_field: [{
           condition: { '==': [{ var: ['source'] }, 'active'] },
-          action: { set: { target: 'dependent_field.isVisible', value: true } },
+          action: { setState: { target: 'dependent_field.isVisible', value: true } },
           priority: 1
         }]
       };

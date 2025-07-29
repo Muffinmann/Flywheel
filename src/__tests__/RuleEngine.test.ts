@@ -12,7 +12,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         foot_cup_size: [{
           condition: { '==': [{ var: ['foot_guidance'] }, 'foot_cup'] },
-          action: { set: { target: 'foot_cup_size.isVisible', value: true } },
+          action: { setState: { target: 'foot_cup_size.isVisible', value: true } },
           priority: 1,
           description: 'Show foot cup size when foot cup is selected'
         }]
@@ -34,7 +34,7 @@ describe('RuleEngine', () => {
               { '>': [{ var: ['experience_level'] }, 5] }
             ]
           },
-          action: { set: { target: 'advanced_options.isVisible', value: true } },
+          action: { setState: { target: 'advanced_options.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -52,7 +52,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         test_field: [{
           condition: { '==': [1, 1] },
-          action: { set: { target: 'test_field.isRequired', value: true } },
+          action: { setState: { target: 'test_field.isRequired', value: true } },
           priority: 1
         }]
       };
@@ -66,7 +66,31 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         target_field: [{
           condition: { '==': [1, 1] },
-          action: { copy: { source: 'source_field', target: 'target_field.calculatedValue' } },
+          action: { copy: { source: 'source_field', target: 'target_field_value' } },
+          priority: 1
+        }]
+      };
+
+      engine.loadRuleSet(ruleSet);
+      engine.updateField({ source_field: 'copied_value' });
+      
+      // Trigger the rule by evaluating the field
+      engine.evaluateField('target_field');
+
+      // COPY sets field values in the context, which can be accessed via var
+      expect(engine['logicResolver'].resolve({ var: ['target_field_value'] }, engine['context'])).toBe('copied_value');
+    });
+
+    test('should handle CALCULATE action with variable reference', () => {
+      const ruleSet: RuleSet = {
+        target_field: [{
+          condition: { '==': [1, 1] },
+          action: { 
+            calculate: { 
+              target: 'target_field.calculatedValue', 
+              formula: { var: ['source_field'] } 
+            } 
+          },
           priority: 1
         }]
       };
@@ -129,8 +153,8 @@ describe('RuleEngine', () => {
           condition: { '==': [1, 1] },
           action: {
             batch: [
-              { set: { target: 'batch_field.isVisible', value: true } },
-              { set: { target: 'batch_field.isRequired', value: true } }
+              { setState: { target: 'batch_field.isVisible', value: true } },
+              { setState: { target: 'batch_field.isRequired', value: true } }
             ]
           },
           priority: 1
@@ -151,12 +175,12 @@ describe('RuleEngine', () => {
         priority_field: [
           {
             condition: { '==': [1, 1] },
-            action: { set: { target: 'priority_field.calculatedValue', value: 'first' } },
+            action: { setState: { target: 'priority_field.calculatedValue', value: 'first' } },
             priority: 2
           },
           {
             condition: { '==': [1, 1] },
-            action: { set: { target: 'priority_field.calculatedValue', value: 'second' } },
+            action: { setState: { target: 'priority_field.calculatedValue', value: 'second' } },
             priority: 1
           }
         ]
@@ -174,12 +198,12 @@ describe('RuleEngine', () => {
         conflict_field: [
           {
             condition: { '==': [1, 1] },
-            action: { set: { target: 'conflict_field.isVisible', value: true } },
+            action: { setState: { target: 'conflict_field.isVisible', value: true } },
             priority: 1
           },
           {
             condition: { '==': [1, 1] },
-            action: { set: { target: 'conflict_field.isVisible', value: false } },
+            action: { setState: { target: 'conflict_field.isVisible', value: false } },
             priority: 1
           }
         ]
@@ -198,7 +222,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         dependent_field: [{
           condition: { '==': [{ var: ['source_field'] }, 'trigger'] },
-          action: { set: { target: 'dependent_field.isVisible', value: true } },
+          action: { setState: { target: 'dependent_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -213,7 +237,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         dependent_field: [{
           condition: { '==': [{ var: ['source_field'] }, 'show'] },
-          action: { set: { target: 'dependent_field.isVisible', value: true } },
+          action: { setState: { target: 'dependent_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -237,12 +261,12 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         field_a: [{
           condition: { '==': [{ var: ['field_b'] }, 'trigger'] },
-          action: { set: { target: 'field_a.isVisible', value: true } },
+          action: { setState: { target: 'field_a.isVisible', value: true } },
           priority: 1
         }],
         field_b: [{
           condition: { '==': [{ var: ['field_a'] }, 'trigger'] },
-          action: { set: { target: 'field_b.isVisible', value: true } },
+          action: { setState: { target: 'field_b.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -262,7 +286,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         admin_panel: [{
           condition: { '$ref': 'is_admin' },
-          action: { set: { target: 'admin_panel.isVisible', value: true } },
+          action: { setState: { target: 'admin_panel.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -279,7 +303,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         test_field: [{
           condition: { '$ref': 'missing_rule' },
-          action: { set: { target: 'test_field.isVisible', value: true } },
+          action: { setState: { target: 'test_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -298,7 +322,7 @@ describe('RuleEngine', () => {
         selected_product_price: [
           {
             condition: { '!=': [{ varTable: "selected_product@product-table.price" }, 0] },
-            action: { set: { target: 'selected_product_price.isVisible', value: true } },
+            action: { setState: { target: 'selected_product_price.isVisible', value: true } },
             priority: 1
           },
           {
@@ -308,7 +332,7 @@ describe('RuleEngine', () => {
                 50,
               ]
             },
-            action: { set: { target: 'selected_product_price.isRequired', value: true } },
+            action: { setState: { target: 'selected_product_price.isRequired', value: true } },
             priority: 1
           },
         ]
@@ -348,7 +372,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         custom_field: [{
           condition: { '==': [1, 1] },
-          action: { set: { target: 'custom_field.customProperty', value: 'modified' } },
+          action: { setState: { target: 'custom_field.customProperty', value: 'modified' } },
           priority: 1
         }]
       };
@@ -413,7 +437,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         conditional_field: [{
           condition: { '==': [1, 2] }, // Always false
-          action: { set: { target: 'conditional_field.isVisible', value: true } },
+          action: { setState: { target: 'conditional_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -428,7 +452,7 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         reactive_field: [{
           condition: { '>': [{ var: ['counter'] }, 5] },
-          action: { set: { target: 'reactive_field.isVisible', value: true } },
+          action: { setState: { target: 'reactive_field.isVisible', value: true } },
           priority: 1
         }]
       };
