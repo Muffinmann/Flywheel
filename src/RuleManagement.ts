@@ -94,7 +94,7 @@
  *  - circular field dependencies
  */
 
-import { RuleSet } from './RuleEngine.js';
+import { RuleSet } from './DependencyGraph.js';
 import { Logic } from './LogicResolver.js';
 
 export interface CompiledRuleSet {

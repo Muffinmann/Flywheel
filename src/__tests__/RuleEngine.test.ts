@@ -1,4 +1,5 @@
-import { RuleEngine, RuleSet, FieldRule } from '../RuleEngine.js';
+import { RuleSet } from '../DependencyGraph.js';
+import { RuleEngine } from '../RuleEngine.js';
 
 describe('RuleEngine', () => {
   let engine: RuleEngine;

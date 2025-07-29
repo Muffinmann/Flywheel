@@ -219,14 +219,6 @@ import { fieldStateOperator } from './FieldStateOperators.js';
  * // }
  * ```
  */
-// Re-export interfaces from modules for backward compatibility
-export { FieldRule, RuleSet } from './DependencyGraph.js';
-
-// Re-export types from modules for backward compatibility
-export { ActionTypes, Action } from './ActionHandler.js';
-export { FieldState } from './FieldStateManager.js';
-export { LookupTable } from './LookupManager.js';
-
 export interface RuleEngineOptions {
   onEvent?: (eventType: string, params?: any) => void;
   onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, any>;
