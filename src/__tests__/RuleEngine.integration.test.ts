@@ -123,7 +123,7 @@ describe('RuleEngine Integration', () => {
 
   describe('Module Integration', () => {
     test('should integrate all modules for complex rule processing', () => {
-      // Test integration of ActionHandler, FieldStateManager, RuleValidator, and DependencyGraph
+      // Test integration of ActionHandler, FieldStateProvider, RuleValidator, and DependencyGraph
       const ruleSet: RuleSet = {
         priority_field: [
           {
@@ -313,7 +313,7 @@ describe('RuleEngine Integration', () => {
     });
   });
 
-  describe('FieldStateManager Integration', () => {
+  describe('FieldStateProvider Integration', () => {
     test('should integrate custom field state creation', () => {
       const engine = new RuleEngine({
         onFieldStateCreation: () => ({

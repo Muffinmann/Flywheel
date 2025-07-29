@@ -9,7 +9,7 @@ describe('RuleEngine Orchestration', () => {
   });
 
   describe('Module Coordination', () => {
-    test('should coordinate between ActionHandler and FieldStateManager', () => {
+    test('should coordinate between ActionHandler and FieldStateProvider', () => {
       const ruleSet: RuleSet = {
         test_field: [{
           condition: { '==': [1, 1] },
@@ -23,7 +23,7 @@ describe('RuleEngine Orchestration', () => {
       expect(fieldState.isRequired).toBe(true);
     });
 
-    test('should coordinate between DependencyGraph and FieldStateManager for cache invalidation', () => {
+    test('should coordinate between DependencyGraph and FieldStateProvider for cache invalidation', () => {
       const ruleSet: RuleSet = {
         dependent: [{
           condition: { '==': [{ var: ['source'] }, 'active'] },

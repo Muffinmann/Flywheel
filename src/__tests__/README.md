@@ -23,13 +23,13 @@ Tests the DependencyGraph module:
 - **Cache Invalidation**: Finding fields to invalidate
 - **Edge Cases**: Empty rule sets, complex expressions
 
-#### `FieldStateManager.test.ts`
-Tests the FieldStateManager module:
+#### `FieldStateProvider.test.ts`
+Tests the FieldStateProvider module:
 - **Default Field State Creation**: Standard and custom states
 - **Field State Management**: Set, get, ensure operations
 - **Field Property Setting**: Dot notation, nested properties
 - **Evaluation Cache Management**: Caching and invalidation
-- **Evaluation Context Building**: Merging contexts and states
+- **Context Provider Interface**: Contributing to rule evaluation context
 - **Utility Methods**: Get all states, clear operations
 
 #### `RuleValidator.test.ts`
@@ -60,7 +60,7 @@ Tests the integration of all modules through the main RuleEngine:
 - **Dependency Management Integration**: Cache invalidation, circular detection
 - **Shared Rules Integration**: Reference resolution
 - **LookupManager Integration**: Lookup table operations
-- **FieldStateManager Integration**: Custom field states
+- **FieldStateProvider Integration**: Custom field states
 - **ActionHandler Integration**: Custom actions
 - **Edge Cases**: Complex scenarios with multiple modules
 
@@ -98,7 +98,7 @@ npm test
 
 ### Run Modular Tests Only
 ```bash
-npx jest src/__tests__/ActionHandler.test.ts src/__tests__/DependencyGraph.test.ts src/__tests__/FieldStateManager.test.ts src/__tests__/RuleValidator.test.ts src/__tests__/LookupManager.test.ts
+npx jest src/__tests__/ActionHandler.test.ts src/__tests__/DependencyGraph.test.ts src/__tests__/FieldStateProvider.test.ts src/__tests__/RuleValidator.test.ts src/__tests__/LookupManager.test.ts
 ```
 
 ### Run Integration Tests Only

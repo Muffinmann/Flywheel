@@ -1,3 +1,5 @@
+import { ContextProvider } from './ContextProvider.js';
+
 export interface FieldState {
   isVisible: boolean;
   isRequired: boolean;
@@ -5,17 +7,32 @@ export interface FieldState {
   [key: string]: any;
 }
 
-export interface FieldStateManagerOptions {
+export interface FieldStateProviderOptions {
   onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, any>;
 }
 
-export class FieldStateManager {
+/**
+ * FieldStateProvider - Provides field state context for rule evaluation.
+ * 
+ * This provider manages field-specific state properties like visibility, 
+ * required status, calculated values, and any custom properties defined
+ * through the onFieldStateCreation callback.
+ * 
+ * The provider contributes a "fieldStates" namespace to the evaluation context,
+ * allowing rules to access field state via expressions like:
+ * {"fieldState": ["fieldName.isVisible"]}
+ */
+export class FieldStateProvider implements ContextProvider {
   private fieldStates: Map<string, FieldState> = new Map();
   private evaluationCache: Map<string, FieldState> = new Map();
-  private options: FieldStateManagerOptions;
+  private options: FieldStateProviderOptions;
 
-  constructor(options: FieldStateManagerOptions = {}) {
+  constructor(options: FieldStateProviderOptions = {}) {
     this.options = options;
+  }
+
+  getNamespace(): string {
+    return 'fieldStates';
   }
 
   createDefaultFieldState(): FieldState {
@@ -47,10 +64,23 @@ export class FieldStateManager {
     return this.fieldStates.get(fieldName)!;
   }
 
-  setFieldProperty(target: string, value: any): void {
+  contributeToContext(baseContext: Record<string, any>): Record<string, any> {
+    const context = { ...baseContext };
+
+    // Add field states to context under fieldStates namespace
+    const fieldStatesObj: Record<string, any> = {};
+    for (const [fieldName, fieldState] of this.fieldStates.entries()) {
+      fieldStatesObj[fieldName] = { ...fieldState };
+    }
+    context.fieldStates = fieldStatesObj;
+
+    return context;
+  }
+
+  handlePropertySet(target: string, value: any): void {
     const dotIndex = target.indexOf('.');
     if (dotIndex === -1) {
-      // No dot found, treat as field name only
+      // No dot found, treat as field name only - not applicable for field state
       return;
     }
     
@@ -80,11 +110,11 @@ export class FieldStateManager {
     current[finalPart] = value;
   }
 
-  getCachedEvaluation(fieldName: string): FieldState | undefined {
+  getCachedValue(fieldName: string): FieldState | undefined {
     return this.evaluationCache.get(fieldName);
   }
 
-  setCachedEvaluation(fieldName: string, fieldState: FieldState): void {
+  setCachedValue(fieldName: string, fieldState: FieldState): void {
     this.evaluationCache.set(fieldName, fieldState);
   }
 
@@ -92,19 +122,6 @@ export class FieldStateManager {
     for (const fieldName of fieldNames) {
       this.evaluationCache.delete(fieldName);
     }
-  }
-
-  buildEvaluationContext(baseContext: Record<string, any>): Record<string, any> {
-    const context = { ...baseContext };
-
-    // Add field states to context under fieldStates namespace: {fieldState: ['field_name.isVisible']}
-    const fieldStatesObj: Record<string, any> = {};
-    for (const [fieldName, fieldState] of this.fieldStates.entries()) {
-      fieldStatesObj[fieldName] = { ...fieldState };
-    }
-    context.fieldStates = fieldStatesObj;
-
-    return context;
   }
 
   getAllFieldStates(): Map<string, FieldState> {

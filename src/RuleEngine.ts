@@ -1,7 +1,8 @@
 import { Logic, LogicResolver } from './LogicResolver.js';
 import { ActionHandler, Action } from './ActionHandler.js';
 import { DependencyGraph, RuleSet } from './DependencyGraph.js';
-import { FieldStateManager, FieldState } from './FieldStateManager.js';
+import { FieldStateProvider, FieldState } from './FieldStateProvider.js';
+import { ContextProvider } from './ContextProvider.js';
 import { RuleValidator } from './RuleValidator.js';
 import { LookupManager } from './LookupManager.js';
 import { DefaultDependencyVisitor } from './DefaultDependencyVisitor.js';
@@ -124,8 +125,17 @@ import { fieldStateOperator } from './FieldStateOperators.js';
  * })
  * ```
  * 
- * By instantiating the RuleEngine, you should provide a field state creation function for your field state.
- * By default, only these keys are defined: "isVisible", "isRequired", "calculatedValue".
+ * ## Context Provider Architecture
+ * 
+ * The RuleEngine now uses a modular context provider system that allows different types of context
+ * to be contributed by separate modules. This makes the system more extensible and follows the
+ * Open/Closed Principle.
+ * 
+ * ### Field State Provider
+ * Field state (visibility, required status, calculated values) is now provided by the FieldStateProvider,
+ * which implements the ContextProvider interface. By default, the engine includes a FieldStateProvider
+ * for backward compatibility.
+ * 
  * ```ts
  * function createFieldState(props: Record<string, unknown>) {
  *  return {
@@ -140,12 +150,51 @@ import { fieldStateOperator } from './FieldStateOperators.js';
  * })
  * ```
  * 
- * This also offers you type guard during the rule creation via:
+ * ### Custom Context Providers
+ * You can register additional context providers to contribute different types of context:
+ * 
+ * ```ts
+ * class PermissionProvider implements ContextProvider {
+ *   getNamespace(): string {
+ *     return 'permissions';
+ *   }
+ * 
+ *   contributeToContext(baseContext: Record<string, any>): Record<string, any> {
+ *     return {
+ *       ...baseContext,
+ *       permissions: this.getUserPermissions()
+ *     };
+ *   }
+ * 
+ *   handlePropertySet(target: string, value: any): void {
+ *     // Handle permission-related property changes
+ *   }
+ * }
+ * 
+ * const permissionProvider = new PermissionProvider();
+ * const engine = new RuleEngine({
+ *   contextProviders: [permissionProvider]
+ * });
+ * 
+ * // Or register after creation
+ * engine.registerContextProvider(permissionProvider);
+ * ```
+ * 
+ * This allows rules to access permission context:
+ * ```json
+ * {
+ *   "condition": { "==": [{ "var": "permissions.canEdit" }, true] },
+ *   "action": { "setState": { "target": "editButton.isVisible", "value": true } }
+ * }
+ * ```
+ * 
+ * ### Type Safety
+ * Type guards can be created for field state properties:
  * ```ts
  * type ValidFieldTarget = keyof ReturnType<typeof onFieldStateCreation>; // e.g. "isVisible" | "readOnly"
  * ```
  * 
- * It ensure "target": "foo.bar" refers to a real key in the return type of createFieldState.
+ * It ensures "target": "foo.bar" refers to a real key in the return type of createFieldState.
  *  
  * 
  * Besides the core mechanism, we also have introduced following functionalities to enhance the UX: 
@@ -235,6 +284,7 @@ import { fieldStateOperator } from './FieldStateOperators.js';
 export interface RuleEngineOptions {
   onEvent?: (eventType: string, params?: any) => void;
   onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, any>;
+  contextProviders?: ContextProvider[];
 }
 
 export interface CustomActionConfig {
@@ -247,7 +297,8 @@ export class RuleEngine {
   private actionHandler: ActionHandler;
   private dependencyGraph: DependencyGraph;
   private dependencyVisitor: DefaultDependencyVisitor;
-  private fieldStateManager: FieldStateManager;
+  private contextProviders: ContextProvider[] = [];
+  private fieldStateProvider: FieldStateProvider;
   private ruleValidator: RuleValidator;
   private lookupManager: LookupManager;
   private ruleSet: RuleSet = {};
@@ -260,10 +311,18 @@ export class RuleEngine {
     this.logicResolver = new LogicResolver();
     this.options = options;
 
-    // Initialize modules
-    this.fieldStateManager = new FieldStateManager({
+    // Initialize field state provider
+    this.fieldStateProvider = new FieldStateProvider({
       onFieldStateCreation: options.onFieldStateCreation
     });
+    
+    // Register provided context providers
+    if (options.contextProviders) {
+      this.contextProviders = [...options.contextProviders];
+    }
+    
+    // Register field state provider by default for backward compatibility
+    this.contextProviders.push(this.fieldStateProvider);
 
     this.actionHandler = new ActionHandler(this.logicResolver, {
       onEvent: options.onEvent,
@@ -273,11 +332,11 @@ export class RuleEngine {
         
         // Invalidate cache for fields that depend on this field
         const invalidatedFields = this.dependencyGraph.getInvalidatedFields([target]);
-        this.fieldStateManager.invalidateCache(invalidatedFields);
+        this.invalidateAllCaches(invalidatedFields);
       },
       onFieldStateSet: (target, value) => {
-        // Setting field state properties
-        this.fieldStateManager.setFieldProperty(target, value);
+        // Setting field state properties - delegate to context providers
+        this.setFieldStateProperty(target, value);
 
         // Extract field name from target (format: "fieldName.property") 
         const dotIndex = target.indexOf('.');
@@ -285,7 +344,7 @@ export class RuleEngine {
           const fieldName = target.substring(0, dotIndex);
           // Invalidate cache for fields that depend on this field
           const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
-          this.fieldStateManager.invalidateCache(invalidatedFields);
+          this.invalidateAllCaches(invalidatedFields);
         }
       }
     });
@@ -310,19 +369,19 @@ export class RuleEngine {
       handler: (payload) => {
         this.context[payload.target] = payload.value;
         const invalidatedFields = this.dependencyGraph.getInvalidatedFields([payload.target]);
-        this.fieldStateManager.invalidateCache(invalidatedFields);
+        this.invalidateAllCaches(invalidatedFields);
       },
       targetExtractor: (payload) => [payload.target]
     });
 
     this.registerCustomAction('setState', {
       handler: (payload) => {
-        this.fieldStateManager.setFieldProperty(payload.target, payload.value);
+        this.setFieldStateProperty(payload.target, payload.value);
         const dotIndex = payload.target.indexOf('.');
         if (dotIndex !== -1) {
           const fieldName = payload.target.substring(0, dotIndex);
           const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
-          this.fieldStateManager.invalidateCache(invalidatedFields);
+          this.invalidateAllCaches(invalidatedFields);
         }
       },
       targetExtractor: (payload) => [payload.target]
@@ -333,7 +392,7 @@ export class RuleEngine {
         const value = this.getFieldValue(payload.source, context);
         this.context[payload.target] = value;
         const invalidatedFields = this.dependencyGraph.getInvalidatedFields([payload.target]);
-        this.fieldStateManager.invalidateCache(invalidatedFields);
+        this.invalidateAllCaches(invalidatedFields);
       },
       targetExtractor: (payload) => [payload.target]
     });
@@ -343,7 +402,7 @@ export class RuleEngine {
         const value = this.logicResolver.resolve(payload.formula, context);
         this.context[payload.target] = value;
         const invalidatedFields = this.dependencyGraph.getInvalidatedFields([payload.target]);
-        this.fieldStateManager.invalidateCache(invalidatedFields);
+        this.invalidateAllCaches(invalidatedFields);
       },
       targetExtractor: (payload) => [payload.target]
     });
@@ -351,12 +410,12 @@ export class RuleEngine {
     this.registerCustomAction('calculateState', {
       handler: (payload, context) => {
         const value = this.logicResolver.resolve(payload.formula, context);
-        this.fieldStateManager.setFieldProperty(payload.target, value);
+        this.setFieldStateProperty(payload.target, value);
         const dotIndex = payload.target.indexOf('.');
         if (dotIndex !== -1) {
           const fieldName = payload.target.substring(0, dotIndex);
           const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
-          this.fieldStateManager.invalidateCache(invalidatedFields);
+          this.invalidateAllCaches(invalidatedFields);
         }
       },
       targetExtractor: (payload) => [payload.target]
@@ -458,22 +517,74 @@ export class RuleEngine {
     return [];
   }
 
+  /**
+   * Register a context provider with the engine.
+   * Context providers can contribute additional context for rule evaluation.
+   * 
+   * @param provider - The context provider to register
+   */
+  registerContextProvider(provider: ContextProvider): void {
+    this.contextProviders.push(provider);
+  }
+
+  /**
+   * Get all registered context providers.
+   * 
+   * @returns Array of registered context providers
+   */
+  getContextProviders(): ContextProvider[] {
+    return [...this.contextProviders];
+  }
+
+  /**
+   * Set a field state property by delegating to appropriate context providers.
+   * 
+   * @param target - The target property path (e.g., "fieldName.property")
+   * @param value - The value to set
+   */
+  private setFieldStateProperty(target: string, value: any): void {
+    // Delegate to all context providers that handle property setting
+    for (const provider of this.contextProviders) {
+      if (provider.handlePropertySet) {
+        provider.handlePropertySet(target, value);
+      }
+    }
+    
+  }
+
+  /**
+   * Invalidate caches across all context providers.
+   * 
+   * @param fieldNames - Array of field names to invalidate
+   */
+  private invalidateAllCaches(fieldNames: string[]): void {
+    // Invalidate caches in all context providers
+    for (const provider of this.contextProviders) {
+      if (provider.invalidateCache) {
+        provider.invalidateCache(fieldNames);
+      }
+    }
+    
+  }
+
   updateField(fieldUpdates: Record<string, any>): string[] {
     for (const [fieldName, value] of Object.entries(fieldUpdates)) {
       this.context[fieldName] = value;
     }
 
     const invalidatedFields = this.dependencyGraph.getInvalidatedFields(Object.keys(fieldUpdates));
-    this.fieldStateManager.invalidateCache(invalidatedFields);
+    this.invalidateAllCaches(invalidatedFields);
 
     return invalidatedFields;
   }
 
   evaluateField(fieldName: string): FieldState {
-    const cached = this.fieldStateManager.getCachedEvaluation(fieldName);
-    if (cached) {
-      return cached;
+    // Check cache in field state provider first (new architecture)
+    const cachedNew = this.fieldStateProvider.getCachedValue(fieldName);
+    if (cachedNew) {
+      return cachedNew;
     }
+    
 
     const dependencies = this.dependencyGraph.getDependencies(fieldName);
     for (const dependency of dependencies) {
@@ -483,8 +594,9 @@ export class RuleEngine {
       }
     }
 
-    const fieldState = this.fieldStateManager.createDefaultFieldState();
-    this.fieldStateManager.setFieldState(fieldName, fieldState);
+    // Create default field state using new provider
+    const fieldState = this.fieldStateProvider.createDefaultFieldState();
+    this.fieldStateProvider.setFieldState(fieldName, fieldState);
 
     const rules = this.ruleSet[fieldName] || [];
     const applicableRules = this.ruleValidator.sortRulesByPriority(rules);
@@ -503,8 +615,10 @@ export class RuleEngine {
       }
     }
 
-    const finalFieldState = this.fieldStateManager.getFieldState(fieldName)!;
-    this.fieldStateManager.setCachedEvaluation(fieldName, finalFieldState);
+    // Get final field state from new provider
+    const finalFieldState = this.fieldStateProvider.getFieldState(fieldName)!;
+    this.fieldStateProvider.setCachedValue(fieldName, finalFieldState);
+    
     return finalFieldState;
   }
 
@@ -513,7 +627,15 @@ export class RuleEngine {
   }
 
   private buildEvaluationContext(): any {
-    return this.fieldStateManager.buildEvaluationContext(this.context);
+    // Start with base context (field values)
+    let context = { ...this.context };
+    
+    // Aggregate context from all providers
+    for (const provider of this.contextProviders) {
+      context = provider.contributeToContext(context);
+    }
+    
+    return context;
   }
 
   private resolveSharedRules(logic: Logic): Logic {
