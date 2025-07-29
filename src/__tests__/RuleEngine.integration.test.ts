@@ -67,7 +67,7 @@ describe('RuleEngine Integration', () => {
           action: {
             batch: [
               { setState: { target: 'complex_field.isVisible', value: true } },
-              { calculate: { target: 'complex_field.calculatedValue', formula: { '*': [{ var: ['score'] }, 1.5] } } },
+              { calculateState: { target: 'complex_field.calculatedValue', formula: { '*': [{ var: ['score'] }, 1.5] } } },
               { trigger: { event: 'admin_high_score', params: { score: { var: ['score'] } } } }
             ]
           },
@@ -447,7 +447,7 @@ describe('RuleEngine Integration', () => {
             action: {
               batch: [
                 { setState: { target: 'feature_access.isVisible', value: true } },
-                { calculate: { 
+                { calculateState: { 
                   target: 'feature_access.calculatedValue', 
                   formula: { '*': [{ var: ['base_score'] }, { lookup: ['plans', { var: ['user_plan'] }, 'multiplier'] }] }
                 }},

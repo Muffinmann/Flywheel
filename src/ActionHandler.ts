@@ -5,6 +5,7 @@ export interface ActionTypes {
   setState: { target: string; value: any };
   copy: { source: string; target: string };
   calculate: { target: string; formula: Logic };
+  calculateState: { target: string; formula: Logic };
   trigger: { event: string; params?: any };
   batch: Action[];
 }
@@ -51,6 +52,12 @@ export class ActionHandler {
     });
 
     this.actionHandlers.set('calculate', (payload, context) => {
+      const { target, formula } = payload;
+      const value = this.logicResolver.resolve(formula, context);
+      this.options.onFieldValueSet?.(target, value);
+    });
+
+    this.actionHandlers.set('calculateState', (payload, context) => {
       const { target, formula } = payload;
       const value = this.logicResolver.resolve(formula, context);
       this.options.onFieldStateSet?.(target, value);

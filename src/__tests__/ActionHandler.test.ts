@@ -67,9 +67,25 @@ describe('ActionHandler', () => {
       expect(mockOnFieldStateSet).not.toHaveBeenCalled();
     });
 
-    test('should handle CALCULATE action with field state target', () => {
+    test('should handle CALCULATE action with field value target', () => {
       const action: Action = {
         calculate: {
+          target: 'total_field',
+          formula: { '+': [{ var: ['a'] }, { var: ['b'] }] }
+        }
+      };
+      const context = { a: 10, b: 5 };
+
+      actionHandler.executeAction(action, context);
+
+      // calculate action now sets field values
+      expect(mockOnFieldValueSet).toHaveBeenCalledWith('total_field', 15);
+      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
+    });
+
+    test('should handle CALCULATE_STATE action with field state target', () => {
+      const action: Action = {
+        calculateState: {
           target: 'field.calculatedValue',
           formula: { '+': [{ var: ['a'] }, { var: ['b'] }] }
         }
@@ -78,7 +94,7 @@ describe('ActionHandler', () => {
 
       actionHandler.executeAction(action, context);
 
-      // calculate action always sets field state properties
+      // calculateState action sets field state properties
       expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.calculatedValue', 15);
       expect(mockOnFieldValueSet).not.toHaveBeenCalled();
     });
@@ -163,9 +179,9 @@ describe('ActionHandler', () => {
       expect(mockOnFieldStateSet).not.toHaveBeenCalled();
     });
 
-    test('should handle CALCULATE action with nested logic', () => {
+    test('should handle CALCULATE_STATE action with nested logic', () => {
       const action: Action = {
-        calculate: {
+        calculateState: {
           target: 'field.result',
           formula: {
             '+': [

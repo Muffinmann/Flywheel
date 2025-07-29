@@ -86,7 +86,7 @@ describe('RuleEngine', () => {
         target_field: [{
           condition: { '==': [1, 1] },
           action: { 
-            calculate: { 
+            calculateState: { 
               target: 'target_field.calculatedValue', 
               formula: { var: ['source_field'] } 
             } 
@@ -107,7 +107,7 @@ describe('RuleEngine', () => {
         total_field: [{
           condition: { '==': [1, 1] },
           action: {
-            calculate: {
+            calculateState: {
               target: 'total_field.calculatedValue',
               formula: { '+': [{ var: ['a'] }, { var: ['b'] }] }
             }

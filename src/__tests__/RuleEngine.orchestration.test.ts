@@ -210,7 +210,7 @@ describe('RuleEngine Orchestration', () => {
         status_display: [{
           condition: { '>': [{ lookup: ['status_codes', { var: ['current_status'] }, 'priority'] }, 0] },
           action: { 
-            calculate: { 
+            calculateState: { 
               target: 'status_display.calculatedValue',
               formula: { lookup: ['status_codes', { var: ['current_status'] }, 'description'] }
             } 

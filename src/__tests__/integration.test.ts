@@ -50,7 +50,7 @@ describe('Integration Tests', () => {
         base_total: [{
           condition: { '==': [1, 1] }, // Always true
           action: {
-            calculate: {
+            calculateState: {
               target: 'base_total.calculatedValue',
               formula: {
                 '+': [
@@ -68,7 +68,7 @@ describe('Integration Tests', () => {
         total_price: [{
           condition: { '==': [1, 1] }, // Always true
           action: {
-            calculate: {
+            calculateState: {
               target: 'total_price.calculatedValue',
               formula: {
                 if: [
@@ -121,12 +121,14 @@ describe('Integration Tests', () => {
       const sizeSelector = engine.evaluateField('size_selector');
       const premiumCustomization = engine.evaluateField('premium_customization');
       const discountField = engine.evaluateField('discount_field');
+      const baseTotal = engine.evaluateField('base_total');
       const totalPrice = engine.evaluateField('total_price');
       const expressShipping = engine.evaluateField('express_shipping');
 
       expect(sizeSelector.isVisible).toBe(true);
       expect(premiumCustomization.isVisible).toBe(true);
       expect(discountField.isVisible).toBe(true);
+      expect(baseTotal.calculatedValue).toBe(90); // 80 + 10 = 90
       expect(totalPrice.calculatedValue).toBe(72); // (80 + 10) * 0.8 = 72
       expect(expressShipping.isVisible).toBe(false); // 72 < 100
     });
@@ -150,7 +152,7 @@ describe('Integration Tests', () => {
         total_cost: [{
           condition: { '==': [1, 1] },
           action: {
-            calculate: {
+            calculateState: {
               target: 'total_cost.calculatedValue',
               formula: {
                 '+': [
@@ -176,20 +178,25 @@ describe('Integration Tests', () => {
         shipping_method: 'express'
       });
 
+      // Evaluate initial state
+      let shippingCost = engine.evaluateField('shipping_cost');
       let totalCost = engine.evaluateField('total_cost');
       let freeShippingNotice = engine.evaluateField('free_shipping_notice');
 
+      expect(shippingCost.calculatedValue).toBe(25); // Express shipping
       expect(totalCost.calculatedValue).toBe(75); // 50 + 25
       expect(freeShippingNotice.isVisible).toBe(false);
 
       // Change to free shipping
       engine.updateField({ shipping_method: 'free' });
       
-      // This should cascade: shipping_cost -> total_cost -> free_shipping_notice
+      // Re-evaluate after update - should cascade: shipping_cost -> total_cost -> free_shipping_notice
+      shippingCost = engine.evaluateField('shipping_cost');
       totalCost = engine.evaluateField('total_cost');
       freeShippingNotice = engine.evaluateField('free_shipping_notice');
 
-      expect(totalCost.calculatedValue).toBe(50); // 50 + 0 (no matching rule for 'free')
+      expect(shippingCost.calculatedValue).toBe(0); // Free shipping
+      expect(totalCost.calculatedValue).toBe(50); // 50 + 0
       expect(freeShippingNotice.isVisible).toBe(true);
     });
   });
@@ -367,7 +374,7 @@ describe('Integration Tests', () => {
         device_name_display: [{
           condition: { '!=': [{ var: ['selected_device'] }, null] },
           action: {
-            calculate: {
+            calculateState: {
               target: 'device_name_display.calculatedValue',
               formula: { varTable: ['selected_device@devices.name'] }
             }
