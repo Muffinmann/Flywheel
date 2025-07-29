@@ -84,25 +84,6 @@ export class ActionHandler {
     handler(payload, context);
   }
 
-  extractActionTargets(action: Action): string[] {
-    const actionType = Object.keys(action)[0];
-    const payload = (action as any)[actionType];
-
-    switch (actionType) {
-      case 'set':
-        return [payload.target];
-      case 'setState':
-        return [payload.target];
-      case 'copy':
-        return [payload.target];
-      case 'calculate':
-        return [payload.target];
-      case 'batch':
-        return payload.flatMap((subAction: Action) => this.extractActionTargets(subAction));
-      default:
-        return [];
-    }
-  }
 
 
 }

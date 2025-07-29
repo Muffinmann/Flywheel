@@ -148,50 +148,6 @@ describe('ActionHandler', () => {
     });
   });
 
-  describe('Action Target Extraction', () => {
-    test('should extract targets from SET action', () => {
-      const action: Action = { set: { target: 'field_value', value: true } };
-      const targets = actionHandler.extractActionTargets(action);
-      expect(targets).toEqual(['field_value']);
-    });
-
-    test('should extract targets from setState action', () => {
-      const action: Action = { setState: { target: 'field.isVisible', value: true } };
-      const targets = actionHandler.extractActionTargets(action);
-      expect(targets).toEqual(['field.isVisible']);
-    });
-
-    test('should extract targets from COPY action', () => {
-      const action: Action = { copy: { source: 'src', target: 'target_field' } };
-      const targets = actionHandler.extractActionTargets(action);
-      expect(targets).toEqual(['target_field']);
-    });
-
-    test('should extract targets from CALCULATE action', () => {
-      const action: Action = { 
-        calculate: { target: 'field.result', formula: { '+': [1, 2] } }
-      };
-      const targets = actionHandler.extractActionTargets(action);
-      expect(targets).toEqual(['field.result']);
-    });
-
-    test('should extract targets from BATCH action', () => {
-      const action: Action = {
-        batch: [
-          { setState: { target: 'field1.isVisible', value: true } },
-          { copy: { source: 'src', target: 'field2_value' } }
-        ]
-      };
-      const targets = actionHandler.extractActionTargets(action);
-      expect(targets).toEqual(['field1.isVisible', 'field2_value']);
-    });
-
-    test('should return empty array for actions without targets', () => {
-      const action: Action = { trigger: { event: 'test', params: {} } };
-      const targets = actionHandler.extractActionTargets(action);
-      expect(targets).toEqual([]);
-    });
-  });
 
 
   describe('Edge Cases', () => {

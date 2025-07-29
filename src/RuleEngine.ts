@@ -1,5 +1,5 @@
 import { Logic, LogicResolver } from './LogicResolver.js';
-import { ActionHandler } from './ActionHandler.js';
+import { ActionHandler, Action } from './ActionHandler.js';
 import { DependencyGraph, RuleSet } from './DependencyGraph.js';
 import { FieldStateManager, FieldState } from './FieldStateManager.js';
 import { RuleValidator } from './RuleValidator.js';
@@ -279,7 +279,7 @@ export class RuleEngine {
 
     this.dependencyVisitor = new DefaultDependencyVisitor(this.sharedRules);
     this.dependencyGraph = new DependencyGraph(this.dependencyVisitor);
-    this.ruleValidator = new RuleValidator((action) => this.actionHandler.extractActionTargets(action));
+    this.ruleValidator = new RuleValidator(this.extractActionTargets.bind(this));
     this.lookupManager = new LookupManager(this.logicResolver);
 
     // Register built-in custom operators
@@ -309,6 +309,26 @@ export class RuleEngine {
 
   registerActionHandler(actionType: string, handler: (payload: any, context: any) => void): void {
     this.actionHandler.registerActionHandler(actionType, handler);
+  }
+
+  private extractActionTargets(action: Action): string[] {
+    const actionType = Object.keys(action)[0];
+    const payload = (action as any)[actionType];
+
+    switch (actionType) {
+      case 'set':
+        return [payload.target];
+      case 'setState':
+        return [payload.target];
+      case 'copy':
+        return [payload.target];
+      case 'calculate':
+        return [payload.target];
+      case 'batch':
+        return payload.flatMap((subAction: Action) => this.extractActionTargets(subAction));
+      default:
+        return [];
+    }
   }
 
   updateField(fieldUpdates: Record<string, any>): string[] {
