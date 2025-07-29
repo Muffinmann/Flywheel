@@ -38,9 +38,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Shared Rules**: `$ref`
 
 ### Actions
-- **Field Values**: `set`, `copy`
-- **Field State**: `setState`
-- **Calculations**: `calculate`
+- **Field Values**: `set`, `copy`, `calculate`
+- **Field State**: `setState`, `calculateState`
 - **Events**: `trigger`
 - **Batch Operations**: `batch`
 

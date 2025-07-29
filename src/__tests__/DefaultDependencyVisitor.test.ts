@@ -289,9 +289,23 @@ describe('DefaultDependencyVisitor', () => {
     });
 
     describe('calculate action', () => {
-      test('should extract dependencies from formula', () => {
+      test('should extract dependencies from formula for field values', () => {
         const action: Action = {
           calculate: {
+            target: 'result_field',
+            formula: { '+': [{ var: ['field_a'] }, { var: ['field_b'] }] }
+          }
+        };
+        const dependencies = visitor.visitAction(action);
+        expect(dependencies).toContain('field_a');
+        expect(dependencies).toContain('field_b');
+      });
+    });
+
+    describe('calculateState action', () => {
+      test('should extract dependencies from formula for field state', () => {
+        const action: Action = {
+          calculateState: {
             target: 'result_field.calculatedValue',
             formula: { '+': [{ var: ['field_a'] }, { var: ['field_b'] }] }
           }
@@ -303,7 +317,7 @@ describe('DefaultDependencyVisitor', () => {
 
       test('should handle complex formulas', () => {
         const action: Action = {
-          calculate: {
+          calculateState: {
             target: 'result_field.calculatedValue',
             formula: {
               and: [

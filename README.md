@@ -259,8 +259,14 @@ engine.registerSharedRules({
 
 ### Calculation Actions
 ```typescript
-// Calculate using logic formula
+// Calculate field values
 { "calculate": { 
+    target: "total",
+    formula: { "+": [{ "var": ["price"] }, { "var": ["tax"] }] }
+}}
+
+// Calculate field state properties  
+{ "calculateState": { 
     target: "field.calculatedValue",
     formula: { "+": [{ "var": ["price"] }, { "var": ["tax"] }] }
 }}
@@ -325,7 +331,7 @@ const calculationRules = {
     {
       condition: true, // Always execute
       action: {
-        "calculate": {
+        "calculateState": {
           target: "totalPrice.calculatedValue",
           formula: {
             "+": [
@@ -385,7 +391,7 @@ const productRules = {
     {
       condition: { "!=": [{ "var": ["selectedProductId"] }, ""] },
       action: {
-        "calculate": {
+        "calculateState": {
           target: "productName.calculatedValue",
           formula: { "varTable": "selectedProductId@products.name" }
         }
@@ -435,7 +441,7 @@ const membershipRules = {
     {
       condition: { "$ref": "isEligibleForDiscount" },
       action: {
-        "calculate": {
+        "calculateState": {
           target: "discountField.calculatedValue",
           formula: { "*": [{ "var": ["orderTotal"] }, 0.1] }
         }

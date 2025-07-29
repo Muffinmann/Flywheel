@@ -38,11 +38,13 @@ import { fieldStateOperator } from './FieldStateOperators.js';
  * Currently, following are built-in action types:
  * ```ts
  * interface ActionTypes {
- *   set: { target: string; value: any };           // Set field properties
- *   copy: { source: string; target: string };     // Copy between fields
- *   calculate: { target: string; formula: Logic }; // Calculate using formulas
- *   trigger: { event: string; params?: any };      // Fire custom events
- *   batch: Action[];                               // Execute multiple actions
+ *   set: { target: string; value: any };                    // Set field values
+ *   setState: { target: string; value: any };               // Set field state properties
+ *   copy: { source: string; target: string };              // Copy between fields
+ *   calculate: { target: string; formula: Logic };         // Calculate field values
+ *   calculateState: { target: string; formula: Logic };    // Calculate field state properties
+ *   trigger: { event: string; params?: any };              // Fire custom events
+ *   batch: Action[];                                        // Execute multiple actions
  * }
  * ```
  * 
@@ -323,6 +325,8 @@ export class RuleEngine {
       case 'copy':
         return [payload.target];
       case 'calculate':
+        return [payload.target];
+      case 'calculateState':
         return [payload.target];
       case 'batch':
         return payload.flatMap((subAction: Action) => this.extractActionTargets(subAction));
