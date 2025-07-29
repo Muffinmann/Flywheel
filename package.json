@@ -1,23 +1,44 @@
 {
-  "name": "flywheel",
+  "name": "flywheel-rules",
   "version": "1.0.0",
-  "description": "a hierarchical rule engine for field configuration using a condition-action pattern",
+  "description": "A powerful rule engine for dynamic field configuration using a condition-action pattern",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "LICENSE",
+    "CHANGELOG.md"
+  ],
   "scripts": {
     "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
-    "dev": "ts-node src/index.ts"
+    "dev": "ts-node src/index.ts",
+    "prepublishOnly": "npm run build && npm test"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Muffinmann/Flywheel.git"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "rules",
+    "engine",
+    "forms",
+    "validation",
+    "logic",
+    "conditions",
+    "actions",
+    "dynamic",
+    "field",
+    "configuration",
+    "typescript",
+    "dependency-tracking",
+    "business-rules"
+  ],
+  "author": "Muffinmann",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/Muffinmann/Flywheel/issues"
@@ -30,5 +51,8 @@
     "ts-jest": "^29.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
   }
 }

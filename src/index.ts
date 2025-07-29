@@ -16,7 +16,3 @@ export {
   IdPathMap, 
   RuleFile 
 } from './RuleManagement.js';
-
-export function hello(): string {
-  return "Hello, Flywheel!";
-}
