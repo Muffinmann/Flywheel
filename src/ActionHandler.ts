@@ -104,48 +104,5 @@ export class ActionHandler {
     }
   }
 
-  extractActionDependencies(action: Action): string[] {
-    const actionType = Object.keys(action)[0];
-    const payload = (action as any)[actionType];
 
-    switch (actionType) {
-      case 'copy':
-        return [payload.source];
-      case 'calculate':
-        return this.extractDependenciesFromLogic(payload.formula);
-      case 'batch':
-        return payload.flatMap((subAction: Action) => this.extractActionDependencies(subAction));
-      default:
-        return [];
-    }
-  }
-
-  private extractDependenciesFromLogic(logic: Logic): string[] {
-    const dependencies: string[] = [];
-
-    if (typeof logic === 'object' && logic !== null && !Array.isArray(logic)) {
-      for (const [operator, operands] of Object.entries(logic)) {
-        if (operator === 'var') {
-          const path = Array.isArray(operands) ? operands[0] : operands;
-          if (typeof path === 'string') {
-            const fieldName = path.includes('@') ? path.split('@')[0] : path.split('.')[0];
-            if (fieldName !== '$') {
-              dependencies.push(fieldName);
-            }
-          }
-        } else {
-          const operandArray = Array.isArray(operands) ? operands : [operands];
-          for (const operand of operandArray) {
-            dependencies.push(...this.extractDependenciesFromLogic(operand));
-          }
-        }
-      }
-    } else if (Array.isArray(logic)) {
-      for (const item of logic) {
-        dependencies.push(...this.extractDependenciesFromLogic(item));
-      }
-    }
-
-    return dependencies;
-  }
 }

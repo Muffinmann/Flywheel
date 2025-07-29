@@ -193,47 +193,6 @@ describe('ActionHandler', () => {
     });
   });
 
-  describe('Action Dependency Extraction', () => {
-    test('should extract dependencies from COPY action', () => {
-      const action: Action = { copy: { source: 'sourceField', target: 'targetField' } };
-      const deps = actionHandler.extractActionDependencies(action);
-      expect(deps).toEqual(['sourceField']);
-    });
-
-    test('should extract dependencies from CALCULATE action', () => {
-      const action: Action = {
-        calculate: {
-          target: 'field.result',
-          formula: { '+': [{ var: ['a'] }, { var: ['b'] }] }
-        }
-      };
-      const deps = actionHandler.extractActionDependencies(action);
-      expect(deps).toEqual(['a', 'b']);
-    });
-
-    test('should extract dependencies from BATCH action', () => {
-      const action: Action = {
-        batch: [
-          { copy: { source: 'field1', target: 'result1' } },
-          { calculate: { target: 'result2', formula: { var: ['field2'] } } }
-        ]
-      };
-      const deps = actionHandler.extractActionDependencies(action);
-      expect(deps).toEqual(['field1', 'field2']);
-    });
-
-    test('should return empty array for actions without dependencies', () => {
-      const action: Action = { set: { target: 'field_value', value: true } };
-      const deps = actionHandler.extractActionDependencies(action);
-      expect(deps).toEqual([]);
-    });
-
-    test('should return empty array for setState actions without dependencies', () => {
-      const action: Action = { setState: { target: 'field.isVisible', value: true } };
-      const deps = actionHandler.extractActionDependencies(action);
-      expect(deps).toEqual([]);
-    });
-  });
 
   describe('Edge Cases', () => {
     test('should handle COPY action with complex var expressions', () => {
