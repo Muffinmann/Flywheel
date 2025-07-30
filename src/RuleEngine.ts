@@ -1,6 +1,6 @@
 import { Logic, LogicResolver } from './LogicResolver.js';
 import { ActionHandler, Action } from './ActionHandler.js';
-import { DependencyGraph, RuleSet } from './DependencyGraph.js';
+import { DependencyGraph, RuleSet, FieldRule } from './DependencyGraph.js';
 import { FieldStateProvider, FieldState } from './FieldStateProvider.js';
 import { ContextProvider } from './ContextProvider.js';
 import { RuleValidator } from './RuleValidator.js';
@@ -46,6 +46,11 @@ import { fieldStateOperator } from './FieldStateOperators.js';
  *   calculateState: { target: string; formula: Logic };    // Calculate field state properties
  *   trigger: { event: string; params?: any };              // Fire custom events
  *   batch: Action[];                                        // Execute multiple actions
+ *   init: {                                                 // Initialize field state/value
+ *     fieldState?: Record<string, any>;                    // Initial state properties
+ *     fieldValue?: any;                                    // Initial field value
+ *     merge?: boolean;                                     // Merge with defaults (default: true)
+ *   };
  * }
  * ```
  * 
@@ -306,6 +311,7 @@ export class RuleEngine {
   private context: Record<string, any> = {};
   private options: RuleEngineOptions;
   private actionTargetExtractors: Map<string, (payload: any) => string[]> = new Map();
+  private currentEvaluatingField: string | null = null;
 
   constructor(options: RuleEngineOptions = {}) {
     this.logicResolver = new LogicResolver();
@@ -435,6 +441,46 @@ export class RuleEngine {
         }
       },
       targetExtractor: (payload) => payload.flatMap((subAction: Action) => this.extractActionTargets(subAction))
+    });
+
+    this.registerCustomAction('init', {
+      handler: (payload) => {
+        const { fieldState, fieldValue, merge = true } = payload;
+        
+        if (!this.currentEvaluatingField) {
+          throw new Error('Init action called outside of field evaluation context');
+        }
+        
+        const fieldName = this.currentEvaluatingField;
+        
+        if (fieldState) {
+          const currentState = this.fieldStateProvider.getFieldState(fieldName);
+          if (!currentState) {
+            throw new Error(`Field state not found for ${fieldName}`);
+          }
+          
+          let newState;
+          if (merge) {
+            // Merge with current state (which includes custom defaults)
+            newState = { ...currentState, ...fieldState };
+          } else {
+            // Start with base defaults only (not custom defaults)
+            const baseDefaults = {
+              isVisible: false,
+              isRequired: false,
+              calculatedValue: undefined
+            };
+            newState = { ...baseDefaults, ...fieldState };
+          }
+          
+          this.fieldStateProvider.setFieldState(fieldName, newState);
+        }
+        
+        if (fieldValue !== undefined) {
+          this.context[fieldName] = fieldValue;
+        }
+      },
+      targetExtractor: () => [] // Init doesn't target other fields
     });
   }
 
@@ -585,41 +631,83 @@ export class RuleEngine {
       return cachedNew;
     }
     
+    // Set current evaluating field
+    this.currentEvaluatingField = fieldName;
 
-    const dependencies = this.dependencyGraph.getDependencies(fieldName);
-    for (const dependency of dependencies) {
-      if (dependency !== fieldName && this.ruleSet[dependency]) {
-        // Only evaluate dependencies that have rules
-        this.evaluateField(dependency);
+    try {
+      const dependencies = this.dependencyGraph.getDependencies(fieldName);
+      for (const dependency of dependencies) {
+        if (dependency !== fieldName && this.ruleSet[dependency]) {
+          // Only evaluate dependencies that have rules
+          this.evaluateField(dependency);
+        }
       }
-    }
 
-    // Create default field state using new provider
-    const fieldState = this.fieldStateProvider.createDefaultFieldState();
-    this.fieldStateProvider.setFieldState(fieldName, fieldState);
+      // Create default field state using new provider
+      const fieldState = this.fieldStateProvider.createDefaultFieldState();
+      this.fieldStateProvider.setFieldState(fieldName, fieldState);
 
-    const rules = this.ruleSet[fieldName] || [];
-    const applicableRules = this.ruleValidator.sortRulesByPriority(rules);
-    this.ruleValidator.validateNoPriorityConflicts(fieldName, applicableRules);
-
-    for (const rule of applicableRules) {
-      const context = this.buildEvaluationContext();
-      const conditionResult = this.logicResolver.resolve(
-        this.resolveSharedRules(rule.condition),
-        context
-      );
-
-      if (conditionResult) {
-        const resolvedAction = this.resolveSharedRulesInAction(rule.action);
-        this.actionHandler.executeAction(resolvedAction, context);
+      const rules = this.ruleSet[fieldName] || [];
+      
+      // Separate init rules from regular rules
+      const initRules: FieldRule[] = [];
+      const regularRules: FieldRule[] = [];
+      
+      for (const rule of rules) {
+        if ('init' in rule.action) {
+          initRules.push(rule);
+        } else {
+          regularRules.push(rule);
+        }
       }
-    }
+      
+      // Process init rules first (sorted by priority)
+      const sortedInitRules = this.ruleValidator.sortRulesByPriority(initRules);
+      this.ruleValidator.validateInitRules(fieldName, sortedInitRules);
+      
+      for (const rule of sortedInitRules) {
+        // Validate init action structure
+        this.ruleValidator.validateInitActionStructure(rule.action);
+        
+        const context = this.buildEvaluationContext();
+        const conditionResult = this.logicResolver.resolve(
+          this.resolveSharedRules(rule.condition),
+          context
+        );
 
-    // Get final field state from new provider
-    const finalFieldState = this.fieldStateProvider.getFieldState(fieldName)!;
-    this.fieldStateProvider.setCachedValue(fieldName, finalFieldState);
-    
-    return finalFieldState;
+        if (conditionResult) {
+          const resolvedAction = this.resolveSharedRulesInAction(rule.action);
+          this.actionHandler.executeAction(resolvedAction, context);
+          break; // Only apply first matching init rule
+        }
+      }
+
+      // Process regular rules
+      const sortedRegularRules = this.ruleValidator.sortRulesByPriority(regularRules);
+      this.ruleValidator.validateNoPriorityConflicts(fieldName, sortedRegularRules);
+
+      for (const rule of sortedRegularRules) {
+        const context = this.buildEvaluationContext();
+        const conditionResult = this.logicResolver.resolve(
+          this.resolveSharedRules(rule.condition),
+          context
+        );
+
+        if (conditionResult) {
+          const resolvedAction = this.resolveSharedRulesInAction(rule.action);
+          this.actionHandler.executeAction(resolvedAction, context);
+        }
+      }
+
+      // Get final field state from new provider
+      const finalFieldState = this.fieldStateProvider.getFieldState(fieldName)!;
+      this.fieldStateProvider.setCachedValue(fieldName, finalFieldState);
+      
+      return finalFieldState;
+    } finally {
+      // Clear current evaluating field
+      this.currentEvaluatingField = null;
+    }
   }
 
   getDependenciesOf(fieldName: string): string[] {

@@ -240,6 +240,30 @@ engine.registerSharedRules({
 
 ## Action Types
 
+### Field Initialization Actions
+```typescript
+// Initialize field state and/or value (processed before other rules)
+{ "init": { 
+    fieldState: { isVisible: true, currency: "USD" },
+    fieldValue: "default-value",
+    merge: true  // Merge with defaults (default: true)
+}}
+
+// Conditional initialization based on context
+{
+  condition: { "==": [{ "var": ["user.role"] }, "premium"] },
+  action: { 
+    "init": { 
+      fieldState: { 
+        paymentMethods: ["card", "paypal", "crypto"],
+        allowSavedCards: true 
+      }
+    }
+  },
+  priority: 0  // Init rules typically use priority 0 or negative
+}
+```
+
 ### Field Value Actions
 ```typescript
 // Set field value directly
@@ -289,6 +313,69 @@ engine.registerSharedRules({
 ```
 
 ## Examples
+
+### Field Initialization with Context
+
+```typescript
+const engine = new RuleEngine({
+  onFieldStateCreation: () => ({
+    theme: 'light',
+    readOnly: false,
+    customProps: {}
+  })
+});
+
+const initRules = {
+  "userSettings": [
+    // Premium users get advanced settings
+    {
+      condition: { "==": [{ "var": ["user.subscription"] }, "premium"] },
+      action: {
+        "init": {
+          fieldState: {
+            isVisible: true,
+            theme: 'dark',
+            features: ['advanced-analytics', 'custom-themes', 'api-access'],
+            maxExports: 'unlimited'
+          },
+          fieldValue: { theme: 'dark', notifications: true }
+        }
+      },
+      priority: 0
+    },
+    // Free users get basic settings
+    {
+      condition: { "==": [1, 1] }, // Fallback rule
+      action: {
+        "init": {
+          fieldState: {
+            isVisible: true,
+            theme: 'light',
+            features: ['basic-analytics'],
+            maxExports: 5
+          },
+          fieldValue: { theme: 'light', notifications: false }
+        }
+      },
+      priority: 1
+    }
+  ]
+};
+
+engine.loadRuleSet(initRules);
+engine.updateField({ user: { subscription: 'premium' } });
+
+const settings = engine.evaluateField("userSettings");
+console.log(settings); 
+// {
+//   isVisible: true,
+//   theme: 'dark',
+//   features: ['advanced-analytics', 'custom-themes', 'api-access'],
+//   maxExports: 'unlimited',
+//   readOnly: false,
+//   customProps: {}
+// }
+```
 
 ### Dynamic Form Visibility
 

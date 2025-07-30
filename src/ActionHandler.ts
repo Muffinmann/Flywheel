@@ -8,6 +8,11 @@ export interface ActionTypes {
   calculateState: { target: string; formula: Logic };
   trigger: { event: string; params?: any };
   batch: Action[];
+  init: {
+    fieldState?: Record<string, any>;
+    fieldValue?: any;
+    merge?: boolean;
+  };
 }
 
 export type Action = {

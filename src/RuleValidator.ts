@@ -58,4 +58,51 @@ export class RuleValidator {
       throw new Error(`Shared rule '${refName}' not found`);
     }
   }
+
+  validateInitRules(fieldName: string, initRules: FieldRule[]): void {
+    if (initRules.length === 0) return;
+
+    // Check for multiple init rules with same priority
+    const priorityGroups = new Map<number, FieldRule[]>();
+    for (const rule of initRules) {
+      const priority = rule.priority;
+      if (!priorityGroups.has(priority)) {
+        priorityGroups.set(priority, []);
+      }
+      priorityGroups.get(priority)!.push(rule);
+    }
+
+    // Warn if multiple init rules have same priority
+    for (const [priority, rules] of priorityGroups) {
+      if (rules.length > 1) {
+        console.warn(
+          `Field '${fieldName}' has ${rules.length} init rules with priority ${priority}. ` +
+          `Only the first matching rule will be applied.`
+        );
+      }
+    }
+  }
+
+  validateInitActionStructure(action: any): void {
+    if (!('init' in action)) {
+      return; // Not an init action
+    }
+
+    const initPayload = action.init;
+    
+    // Validate that at least one of fieldState or fieldValue is provided
+    if (!initPayload.fieldState && initPayload.fieldValue === undefined) {
+      throw new Error('Init action must specify either fieldState or fieldValue');
+    }
+
+    // Validate merge flag is boolean if provided
+    if (initPayload.merge !== undefined && typeof initPayload.merge !== 'boolean') {
+      throw new Error('Init action merge flag must be a boolean');
+    }
+
+    // Validate fieldState is an object if provided
+    if (initPayload.fieldState && typeof initPayload.fieldState !== 'object') {
+      throw new Error('Init action fieldState must be an object');
+    }
+  }
 }

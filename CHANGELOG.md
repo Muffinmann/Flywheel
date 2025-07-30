@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **Init Action** - New action type for field initialization
+  - Initialize field state and/or value before other rules
+  - Support for conditional initialization based on context
+  - Merge or replace behavior with default states
+  - Priority-based ordering for multiple init rules
+  - Comprehensive validation and warnings
+
 ## [1.0.0] - 2025-07-29
 
 ### Added
@@ -50,7 +60,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Observer Pattern** - Event system for custom integrations
 
 ### Testing
-- **291 test cases** with comprehensive coverage
+- **308 test cases** with comprehensive coverage
 - **Integration tests** for real-world scenarios
 - **Edge case handling** for robust operation
 - **Performance tests** for optimization validation
