@@ -2,7 +2,6 @@ export { LogicResolver, Logic, CustomLogicRegistration, DebugTrace } from './Log
 export {
   RuleEngine,
   RuleEngineOptions,
-  CustomActionConfig,
 } from './RuleEngine.js';
 export {
   RuleManagement,
@@ -24,8 +23,4 @@ export {
 } from './LookupManager.js'
 export {
   FieldState,
-  FieldStateProvider
-} from './FieldStateProvider.js'
-export {
-  ContextProvider
-} from './ContextProvider.js'
+} from './FieldStateManager.js'

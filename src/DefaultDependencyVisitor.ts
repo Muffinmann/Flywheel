@@ -1,12 +1,12 @@
 import { Logic } from './LogicResolver.js';
 import { Action } from './ActionHandler.js';
-import { DependencyVisitor } from './DependencyGraph.js';
+import { DependencyVisitor, DependencyInfo } from './DependencyGraph.js';
 
 /**
  * Strategy interface for handling specific operators in dependency extraction
  */
 interface OperatorHandler {
-  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): string[];
+  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): DependencyInfo;
 }
 
 /**
@@ -59,40 +59,33 @@ class DependencyUtils {
  * Handler for 'var' operator - extracts field names from variable references
  */
 class VarOperatorHandler implements OperatorHandler {
-  handle(operands: any): string[] {
+  handle(operands: any): DependencyInfo {
     const path = Array.isArray(operands) ? operands[0] : operands;
     if (typeof path === 'string') {
       const fieldName = DependencyUtils.extractFieldName(path);
-      return fieldName ? [fieldName] : [];
+      return {
+        dependencies: fieldName ? [fieldName] : [],
+        dependents: [],
+      };
     }
-    return [];
+    return { dependencies: [], dependents: [] };
   }
 }
 
-/**
- * Handler for 'fieldState' operator - extracts field names from field state references
- */
-class FieldStateOperatorHandler implements OperatorHandler {
-  handle(operands: any): string[] {
-    const pathArray = DependencyUtils.normalizeToArray(operands);
-    const stringPaths = pathArray.filter((path): path is string => typeof path === 'string');
-    return DependencyUtils.extractFieldNamesFromPaths(stringPaths);
-  }
-}
 
 /**
  * Handler for '$ref' operator - resolves shared rule references
  */
 class RefOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): string[] {
+  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): DependencyInfo {
     const refName = Array.isArray(operands) ? operands[0] : operands;
     if (visitor.getSharedRule(refName) && !visited.has(refName)) {
       visited.add(refName);
-      const dependencies = visitor.visitLogicInternal(visitor.getSharedRule(refName)!, visited);
+      const info = visitor.visitLogicInternal(visitor.getSharedRule(refName)!, visited);
       visited.delete(refName);
-      return dependencies;
+      return info;
     }
-    return [];
+    return { dependencies: [], dependents: [] };
   }
 }
 
@@ -100,12 +93,12 @@ class RefOperatorHandler implements OperatorHandler {
  * Handler for 'lookup' operator - extracts dependencies from lookup key expressions
  */
 class LookupOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): string[] {
+  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): DependencyInfo {
     const lookupOperands = DependencyUtils.normalizeToArray(operands);
     if (lookupOperands.length > 1) {
       return visitor.visitLogicInternal(lookupOperands[1], visited);
     }
-    return [];
+    return { dependencies: [], dependents: [] };
   }
 }
 
@@ -113,7 +106,7 @@ class LookupOperatorHandler implements OperatorHandler {
  * Handler for 'varTable' operator - extracts field names from table variable references
  */
 class VarTableOperatorHandler implements OperatorHandler {
-  handle(operands: any): string[] {
+  handle(operands: any): DependencyInfo {
     const operandArray = DependencyUtils.normalizeToArray(operands);
     const dependencies: string[] = [];
 
@@ -125,7 +118,7 @@ class VarTableOperatorHandler implements OperatorHandler {
         }
       }
     }
-    return dependencies;
+    return { dependencies, dependents: [] };
   }
 }
 
@@ -133,19 +126,23 @@ class VarTableOperatorHandler implements OperatorHandler {
  * Default handler for all other operators - recursively processes operands
  */
 class DefaultOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): string[] {
+  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): DependencyInfo {
     const operandArray = DependencyUtils.normalizeToArray(operands);
     const dependencies: string[] = [];
+    const dependents: string[] = [];
 
     for (const operand of operandArray) {
-      dependencies.push(...visitor.visitLogicInternal(operand, visited));
+      const info = visitor.visitLogicInternal(operand, visited);
+      dependencies.push(...info.dependencies);
+      dependents.push(...info.dependents);
     }
-    return dependencies;
+    return { dependencies, dependents };
   }
 }
 
 export class DefaultDependencyVisitor implements DependencyVisitor {
   private sharedRules: Record<string, Logic> = {};
+
   private operatorHandlers: Map<string, OperatorHandler> = new Map();
 
   constructor(sharedRules: Record<string, Logic> = {}) {
@@ -158,7 +155,6 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
    */
   private initializeOperatorHandlers(): void {
     this.operatorHandlers.set('var', new VarOperatorHandler());
-    this.operatorHandlers.set('fieldState', new FieldStateOperatorHandler());
     this.operatorHandlers.set('$ref', new RefOperatorHandler());
     this.operatorHandlers.set('lookup', new LookupOperatorHandler());
     this.operatorHandlers.set('varTable', new VarTableOperatorHandler());
@@ -182,51 +178,80 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
     this.sharedRules = { ...this.sharedRules, ...sharedRules };
   }
 
-  visitLogic(logic: Logic): string[] {
+  visitLogic(logic: Logic): DependencyInfo {
     return this.visitLogicInternal(logic, new Set());
   }
 
-  visitLogicInternal(logic: Logic, visited: Set<string>): string[] {
+  visitLogicInternal(logic: Logic, visited: Set<string>): DependencyInfo {
     const dependencies: string[] = [];
+    const dependents: string[] = [];
 
     // Handle primitive values (null, undefined, strings, numbers, booleans)
     if (typeof logic !== 'object' || logic === null) {
-      return dependencies;
+      return { dependencies, dependents };
     }
 
     // Handle arrays by recursively processing each item
     if (Array.isArray(logic)) {
       for (const item of logic) {
-        dependencies.push(...this.visitLogicInternal(item, visited));
+        const info = this.visitLogicInternal(item, visited);
+        dependencies.push(...info.dependencies);
+        dependents.push(...info.dependents);
       }
-      return dependencies;
+      return { dependencies, dependents };
     }
 
     // Handle logic objects with operators
     for (const [operator, operands] of Object.entries(logic)) {
       const handler = this.getOperatorHandler(operator);
-      dependencies.push(...handler.handle(operands, this, visited));
+      const info = handler.handle(operands, this, visited);
+      dependencies.push(...info.dependencies);
+      dependents.push(...info.dependents);
     }
 
-    return dependencies;
+    return { dependencies, dependents };
   }
 
-  visitAction(action: Action): string[] {
+  visitAction(action: Action): DependencyInfo {
     const actionType = Object.keys(action)[0];
     const payload = (action as any)[actionType];
 
-    // Check actions that may reference other fields
     switch (actionType) {
-      case 'copy':
-        return [payload.source];
-      case 'calculate':
-        return this.visitLogic(payload.formula);
-      case 'calculateState':
-        return this.visitLogic(payload.formula);
-      case 'batch':
-        return payload.flatMap((subAction: Action) => this.visitAction(subAction));
+      case 'set': {
+        const targetField = DependencyUtils.extractFieldName(payload.target);
+        return {
+          dependencies: [],
+          dependents: targetField ? [targetField] : [],
+        };
+      }
+      case 'copy': {
+        const sourceField = DependencyUtils.extractFieldName(payload.source);
+        const targetField = DependencyUtils.extractFieldName(payload.target);
+        return {
+          dependencies: sourceField ? [sourceField] : [],
+          dependents: targetField ? [targetField] : [],
+        };
+      }
+      case 'calculate': {
+        const targetField = DependencyUtils.extractFieldName(payload.target);
+        const formulaInfo = this.visitLogic(payload.formula);
+        return {
+          dependencies: formulaInfo.dependencies,
+          dependents: targetField ? [targetField] : [],
+        };
+      }
+      case 'batch': {
+        const dependencies: string[] = [];
+        const dependents: string[] = [];
+        for (const subAction of payload) {
+          const info = this.visitAction(subAction);
+          dependencies.push(...info.dependencies);
+          dependents.push(...info.dependents);
+        }
+        return { dependencies, dependents };
+      }
       default:
-        return [];
+        return { dependencies: [], dependents: [] };
     }
   }
 }

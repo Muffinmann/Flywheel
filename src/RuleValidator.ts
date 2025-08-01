@@ -1,6 +1,7 @@
 import { FieldRule } from './DependencyGraph.js';
 import { Action } from './ActionHandler.js';
 
+
 export class RuleValidator {
   private extractActionTargets: (action: Action) => string[];
 
@@ -30,7 +31,7 @@ export class RuleValidator {
       for (const [priority, count] of priorityCounts) {
         if (count > 1) {
           throw new Error(
-            `Conflicting rules for field '${fieldName}' target '${target}' with same priority ${priority}`
+            `Conflicting rules for field '${fieldName}' target '${target}' with same priority ${priority}`,
           );
         }
       }
@@ -89,16 +90,16 @@ export class RuleValidator {
     }
 
     const initPayload = action.init;
-    
+
     // Validate that at least one of fieldState or fieldValue is provided
     if (!initPayload.fieldState && initPayload.fieldValue === undefined) {
       throw new Error('Init action must specify either fieldState or fieldValue');
     }
 
     // Validate merge flag is boolean if provided
-    if (initPayload.merge !== undefined && typeof initPayload.merge !== 'boolean') {
-      throw new Error('Init action merge flag must be a boolean');
-    }
+    // if (initPayload.merge !== undefined && typeof initPayload.merge !== 'boolean') {
+    //   throw new Error('Init action merge flag must be a boolean');
+    // }
 
     // Validate fieldState is an object if provided
     if (initPayload.fieldState && typeof initPayload.fieldState !== 'object') {

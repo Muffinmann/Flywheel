@@ -1,5 +1,6 @@
 import { LogicResolver } from './LogicResolver.js';
 
+
 export interface LookupTable {
   table: any[];
   primaryKey: string;
@@ -7,6 +8,7 @@ export interface LookupTable {
 
 export class LookupManager {
   private lookupTables: Map<string, LookupTable> = new Map();
+
   private logicResolver: LogicResolver;
 
   constructor(logicResolver: LogicResolver) {
@@ -20,7 +22,7 @@ export class LookupManager {
       const tableName = tableConfig.name || `${tableConfig.primaryKey}_table`;
       const lookupTable: LookupTable = {
         table: tableConfig.table,
-        primaryKey: tableConfig.primaryKey
+        primaryKey: tableConfig.primaryKey,
       };
       this.lookupTables.set(tableName, lookupTable);
     }
@@ -43,19 +45,19 @@ export class LookupManager {
           if (path.includes('@')) {
             const [fieldPath, lookupSpec] = path.split('@');
             const [tableName, property] = lookupSpec.split('.');
-            const keyValue = this.logicResolver.resolve({ var: [fieldPath] }, context);
+            const keyValue = this.logicResolver.resolve({ var: `${fieldPath}.value` }, context);
 
             const table = this.lookupTables.get(tableName);
             if (!table) {
               throw new Error(`Lookup table '${tableName}' not found`);
             }
 
-            const record = table.table.find(item => item[table.primaryKey] === keyValue);
+            const record = table.table.find((item) => item[table.primaryKey] === keyValue);
             return record ? record[property] : undefined;
           }
 
-          return this.logicResolver.resolve({ var: [path] }, context);
-        }
+          return this.logicResolver.resolve({ var: `${path}.value` }, context);
+        },
       },
       {
         operator: 'lookup',
@@ -76,11 +78,11 @@ export class LookupManager {
           }
 
           const keyValue = this.logicResolver.resolve(keyLogic, context);
-          const record = table.table.find(item => item[table.primaryKey] === keyValue);
+          const record = table.table.find((item) => item[table.primaryKey] === keyValue);
 
           return record ? record[property] : undefined;
-        }
-      }
+        },
+      },
     ]);
   }
 

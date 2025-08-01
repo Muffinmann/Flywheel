@@ -1,9 +1,15 @@
 import { Logic } from './LogicResolver.js';
 import { Action } from './ActionHandler.js';
 
+
+export interface DependencyInfo {
+  dependencies: string[]; // Fields this rule reads from
+  dependents: string[]; // Fields this rule writes to
+}
+
 export interface DependencyVisitor {
-  visitLogic(logic: Logic): string[];
-  visitAction(action: Action): string[];
+  visitLogic(logic: Logic): DependencyInfo;
+  visitAction(action: Action): DependencyInfo;
 }
 
 export interface FieldRule {
@@ -19,11 +25,13 @@ export interface RuleSet {
 
 export class DependencyGraph {
   private dependencyGraph: Map<string, Set<string>> = new Map();
+
   private reverseDependencyGraph: Map<string, Set<string>> = new Map();
+
   private visitor: DependencyVisitor;
 
   constructor(
-    visitor: DependencyVisitor
+    visitor: DependencyVisitor,
   ) {
     this.visitor = visitor;
   }
@@ -36,16 +44,26 @@ export class DependencyGraph {
       const dependencies = new Set<string>();
 
       for (const rule of rules) {
-        const conditionDeps = this.visitor.visitLogic(rule.condition);
-        const actionDeps = this.visitor.visitAction(rule.action);
+        const conditionInfo = this.visitor.visitLogic(rule.condition);
+        const actionInfo = this.visitor.visitAction(rule.action);
 
-        for (const dep of [...conditionDeps, ...actionDeps]) {
+        // Add all dependencies (fields read from)
+        for (const dep of [...conditionInfo.dependencies, ...actionInfo.dependencies]) {
           dependencies.add(dep);
+        }
+
+        // For each dependent (field written to), mark current field as its dependency
+        for (const dependent of actionInfo.dependents) {
+          if (!this.reverseDependencyGraph.has(fieldName)) {
+            this.reverseDependencyGraph.set(fieldName, new Set());
+          }
+          this.reverseDependencyGraph.get(fieldName)!.add(dependent);
         }
       }
 
       this.dependencyGraph.set(fieldName, dependencies);
 
+      // Store reverse dependencies for the field's own dependencies
       for (const dependency of dependencies) {
         if (!this.reverseDependencyGraph.has(dependency)) {
           this.reverseDependencyGraph.set(dependency, new Set());
@@ -115,5 +133,4 @@ export class DependencyGraph {
 
     return Array.from(invalidatedFields);
   }
-
 }
