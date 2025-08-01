@@ -1,5 +1,34 @@
 import { LogicResolver, Logic } from '../LogicResolver.js';
-import { fieldStateOperator } from '../FieldStateOperators.js';
+
+// Define fieldState operator for testing
+const fieldStateOperator = (args: any[], context: any) => {
+  if (!Array.isArray(args) || args.length !== 1) {
+    throw new Error('fieldState operator requires exactly one argument');
+  }
+  
+  const path = args[0];
+  if (typeof path !== 'string' || !path.includes('.')) {
+    throw new Error('fieldState operator requires format: fieldName.property');
+  }
+  
+  const [fieldName, ...propertyParts] = path.split('.');
+  const propertyPath = propertyParts.join('.');
+  
+  const fieldStates = context.fieldStates || {};
+  const fieldState = fieldStates[fieldName];
+  
+  if (!fieldState) {
+    return undefined;
+  }
+  
+  // Navigate nested properties
+  let value = fieldState;
+  for (const prop of propertyParts) {
+    value = value?.[prop];
+  }
+  
+  return value;
+};
 
 describe('LogicResolver', () => {
   let resolver: LogicResolver;

@@ -16,8 +16,8 @@ describe('Edge Cases and Error Handling', () => {
       expect(resolver.resolve(undefined, {})).toBe(undefined);
       
       const context = { nullValue: null, undefinedValue: undefined };
-      expect(resolver.resolve({ var: ['nullValue'] }, context)).toBe(null);
-      expect(resolver.resolve({ var: ['undefinedValue'] }, context)).toBe(undefined);
+      expect(resolver.resolve({ var: ['nullValue.value'] }, context)).toBe(null);
+      expect(resolver.resolve({ var: ['undefinedValue.value'] }, context)).toBe(undefined);
     });
 
     test('should handle deep object paths with missing intermediate values', () => {
@@ -113,7 +113,7 @@ describe('Edge Cases and Error Handling', () => {
       const ruleSet: RuleSet = {
         test_field: [{
           condition: { '==': [1, 2] }, // Always false
-          action: { setState: { target: 'test_field.isVisible', value: true } },
+          action: { set: { target: 'test_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -153,7 +153,7 @@ describe('Edge Cases and Error Handling', () => {
       const ruleSet: RuleSet = {
         nested_field: [{
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'nested_field.deeply.nested.property', value: 'test' } },
+          action: { set: { target: 'nested_field.deeply.nested.property', value: 'test' } },
           priority: 1
         }]
       };
@@ -168,8 +168,8 @@ describe('Edge Cases and Error Handling', () => {
     test('should handle rapid field updates', () => {
       const ruleSet: RuleSet = {
         reactive_field: [{
-          condition: { '>': [{ var: ['counter'] }, 5] },
-          action: { setState: { target: 'reactive_field.isVisible', value: true } },
+          condition: { '>': [{ var: ['counter.value'] }, 5] },
+          action: { set: { target: 'reactive_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -192,8 +192,8 @@ describe('Edge Cases and Error Handling', () => {
       // Generate 1000 fields with rules
       for (let i = 0; i < 1000; i++) {
         ruleSet[`field_${i}`] = [{
-          condition: { '==': [{ var: ['trigger'] }, i] },
-          action: { setState: { target: `field_${i}.isVisible`, value: true } },
+          condition: { '==': [{ var: ['trigger.value'] }, i] },
+          action: { set: { target: `field_${i}.isVisible`, value: true } },
           priority: 1
         }];
       }
@@ -208,13 +208,13 @@ describe('Edge Cases and Error Handling', () => {
     test('should handle concurrent field evaluations', () => {
       const ruleSet: RuleSet = {
         field1: [{
-          condition: { '==': [{ var: ['shared_var'] }, 'trigger'] },
-          action: { setState: { target: 'field1.isVisible', value: true } },
+          condition: { '==': [{ var: ['shared_var.value'] }, 'trigger'] },
+          action: { set: { target: 'field1.isVisible', value: true } },
           priority: 1
         }],
         field2: [{
-          condition: { '==': [{ var: ['shared_var'] }, 'trigger'] },
-          action: { setState: { target: 'field2.isVisible', value: true } },
+          condition: { '==': [{ var: ['shared_var.value'] }, 'trigger'] },
+          action: { set: { target: 'field2.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -231,11 +231,8 @@ describe('Edge Cases and Error Handling', () => {
     });
 
     test('should handle actions that throw errors', () => {
-      engine.registerCustomAction('error_action', {
-        handler: () => {
-          throw new Error('Custom action error');
-        },
-        targetExtractor: () => []
+      engine.registerActionHandler('error_action', () => {
+        throw new Error('Custom action error');
       });
 
       const ruleSet: RuleSet = {
@@ -256,8 +253,8 @@ describe('Edge Cases and Error Handling', () => {
     test('should handle memory pressure with many evaluations', () => {
       const ruleSet: RuleSet = {
         memory_field: [{
-          condition: { '>': [{ var: ['counter'] }, 0] },
-          action: { setState: { target: 'memory_field.calculatedValue', value: { var: ['counter'] } } },
+          condition: { '>': [{ var: ['counter.value'] }, 0] },
+          action: { set: { target: 'memory_field.calculatedValue', value: { var: ['counter.value'] } } },
           priority: 1
         }]
       };
@@ -289,8 +286,8 @@ describe('Edge Cases and Error Handling', () => {
     test('should detect direct circular dependencies', () => {
       const ruleSet: RuleSet = {
         field_a: [{
-          condition: { '==': [{ var: ['field_a'] }, 'trigger'] },
-          action: { setState: { target: 'field_a.isVisible', value: true } },
+          condition: { '==': [{ var: ['field_a.value'] }, 'trigger'] },
+          action: { set: { target: 'field_a.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -303,18 +300,18 @@ describe('Edge Cases and Error Handling', () => {
     test('should detect indirect circular dependencies', () => {
       const ruleSet: RuleSet = {
         field_a: [{
-          condition: { '==': [{ var: ['field_b'] }, 'trigger'] },
-          action: { setState: { target: 'field_a.isVisible', value: true } },
+          condition: { '==': [{ var: ['field_b.value'] }, 'trigger'] },
+          action: { set: { target: 'field_a.isVisible', value: true } },
           priority: 1
         }],
         field_b: [{
-          condition: { '==': [{ var: ['field_c'] }, 'trigger'] },
-          action: { setState: { target: 'field_b.isVisible', value: true } },
+          condition: { '==': [{ var: ['field_c.value'] }, 'trigger'] },
+          action: { set: { target: 'field_b.isVisible', value: true } },
           priority: 1
         }],
         field_c: [{
-          condition: { '==': [{ var: ['field_a'] }, 'trigger'] },
-          action: { setState: { target: 'field_c.isVisible', value: true } },
+          condition: { '==': [{ var: ['field_a.value'] }, 'trigger'] },
+          action: { set: { target: 'field_c.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -346,18 +343,18 @@ describe('Edge Cases and Error Handling', () => {
     test('should allow non-circular complex dependencies', () => {
       const ruleSet: RuleSet = {
         field_a: [{
-          condition: { '==': [{ var: ['input1'] }, 'trigger'] },
-          action: { setState: { target: 'field_a.isVisible', value: true } },
+          condition: { '==': [{ var: ['input1.value'] }, 'trigger'] },
+          action: { set: { target: 'field_a.isVisible', value: true } },
           priority: 1
         }],
         field_b: [{
-          condition: { '==': [{ fieldState: ['field_a.isVisible'] }, true] },
-          action: { setState: { target: 'field_b.isVisible', value: true } },
+          condition: { '==': [{ var: ['field_a.isVisible'] }, true] },
+          action: { set: { target: 'field_b.isVisible', value: true } },
           priority: 1
         }],
         field_c: [{
-          condition: { '==': [{ fieldState: ['field_b.isVisible'] }, true] },
-          action: { setState: { target: 'field_c.isVisible', value: true } },
+          condition: { '==': [{ var: ['field_b.isVisible'] }, true] },
+          action: { set: { target: 'field_c.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -379,7 +376,7 @@ describe('Edge Cases and Error Handling', () => {
       const ruleSet: RuleSet = {
         test_field: [{
           condition: { '$ref': 'missing_shared_rule' },
-          action: { setState: { target: 'test_field.isVisible', value: true } },
+          action: { set: { target: 'test_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -444,7 +441,7 @@ describe('Edge Cases and Error Handling', () => {
       const ruleSet: RuleSet = {
         standalone_field: [{
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'standalone_field.isVisible', value: true } },
+          action: { set: { target: 'standalone_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -461,7 +458,7 @@ describe('Edge Cases and Error Handling', () => {
             if: [
               {
                 and: [
-                  { '==': [{ var: ['level1'] }, 'value'] },
+                  { '==': [{ var: ['level1.value'] }, 'value'] },
                   {
                     or: [
                       { '>': [{ var: ['level2.count'] }, 0] },
@@ -479,7 +476,7 @@ describe('Edge Cases and Error Handling', () => {
               'result2'
             ]
           },
-          action: { setState: { target: 'complex_field.isVisible', value: true } },
+          action: { set: { target: 'complex_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -516,15 +513,15 @@ describe('Edge Cases and Error Handling', () => {
         
         if (i === 0) {
           // First field depends on root trigger
-          condition = { '==': [{ var: ['root_trigger'] }, 'trigger'] };
+          condition = { '==': [{ var: ['root_trigger.value'] }, 'trigger'] };
         } else {
           // Subsequent fields depend on previous field being visible
-          condition = { '==': [{ fieldState: [`field_${i - 1}.isVisible`] }, true] };
+          condition = { '==': [{ var: [`field_${i - 1}.isVisible`] }, true] };
         }
         
         ruleSet[fieldName] = [{
           condition: condition,
-          action: { setState: { target: `${fieldName}.isVisible`, value: true } },
+          action: { set: { target: `${fieldName}.isVisible`, value: true } },
           priority: 1
         }];
       }

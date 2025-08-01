@@ -16,12 +16,12 @@ describe('RuleValidator', () => {
       const rules: FieldRule[] = [
         {
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'field.isVisible', value: true } },
+          action: { set: { target: 'field.isVisible', value: true } },
           priority: 1
         },
         {
           condition: { '==': [2, 2] },
-          action: { setState: { target: 'field.isVisible', value: false } },
+          action: { set: { target: 'field.isVisible', value: false } },
           priority: 2
         }
       ];
@@ -37,12 +37,12 @@ describe('RuleValidator', () => {
       const rules: FieldRule[] = [
         {
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'field.isVisible', value: true } },
+          action: { set: { target: 'field.isVisible', value: true } },
           priority: 1
         },
         {
           condition: { '==': [2, 2] },
-          action: { setState: { target: 'field.isVisible', value: false } },
+          action: { set: { target: 'field.isVisible', value: false } },
           priority: 1
         }
       ];
@@ -58,12 +58,12 @@ describe('RuleValidator', () => {
       const rules: FieldRule[] = [
         {
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'field.isVisible', value: true } },
+          action: { set: { target: 'field.isVisible', value: true } },
           priority: 1
         },
         {
           condition: { '==': [2, 2] },
-          action: { setState: { target: 'field.isRequired', value: true } },
+          action: { set: { target: 'field.isRequired', value: true } },
           priority: 1
         }
       ];
@@ -83,15 +83,15 @@ describe('RuleValidator', () => {
           condition: { '==': [1, 1] },
           action: {
             batch: [
-              { setState: { target: 'field.isVisible', value: true } },
-              { setState: { target: 'field.isRequired', value: true } }
+              { set: { target: 'field.isVisible', value: true } },
+              { set: { target: 'field.isRequired', value: true } }
             ]
           },
           priority: 1
         },
         {
           condition: { '==': [2, 2] },
-          action: { setState: { target: 'field.isVisible', value: false } },
+          action: { set: { target: 'field.isVisible', value: false } },
           priority: 1
         }
       ];
@@ -210,7 +210,7 @@ describe('RuleValidator', () => {
     test('should validate complete rule structure', () => {
       const rule: FieldRule = {
         condition: { '==': [1, 1] },
-        action: { setState: { target: 'field.isVisible', value: true } },
+        action: { set: { target: 'field.isVisible', value: true } },
         priority: 1,
         description: 'Valid rule'
       };
@@ -222,7 +222,7 @@ describe('RuleValidator', () => {
 
     test('should throw error for missing condition', () => {
       const rule = {
-        action: { setState: { target: 'field.isVisible', value: true } },
+        action: { set: { target: 'field.isVisible', value: true } },
         priority: 1
       } as any;
 
@@ -245,7 +245,7 @@ describe('RuleValidator', () => {
     test('should throw error for invalid priority type', () => {
       const rule = {
         condition: { '==': [1, 1] },
-        action: { setState: { target: 'field.isVisible', value: true } },
+        action: { set: { target: 'field.isVisible', value: true } },
         priority: 'invalid'
       } as any;
 
@@ -257,7 +257,7 @@ describe('RuleValidator', () => {
     test('should throw error for missing priority', () => {
       const rule = {
         condition: { '==': [1, 1] },
-        action: { setState: { target: 'field.isVisible', value: true } }
+        action: { set: { target: 'field.isVisible', value: true } }
       } as any;
 
       expect(() => {
@@ -301,7 +301,7 @@ describe('RuleValidator', () => {
       const rules: FieldRule[] = [
         {
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'field.isVisible', value: true } },
+          action: { set: { target: 'field.isVisible', value: true } },
           priority: 1
         },
         {
@@ -346,7 +346,7 @@ describe('RuleValidator', () => {
       const rules: FieldRule[] = [
         {
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'field.isVisible', value: true } },
+          action: { set: { target: 'field.isVisible', value: true } },
           priority: 0
         }
       ];
@@ -362,12 +362,12 @@ describe('RuleValidator', () => {
       const rules: FieldRule[] = [
         {
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'field.isVisible', value: true } },
+          action: { set: { target: 'field.isVisible', value: true } },
           priority: -1
         },
         {
           condition: { '==': [2, 2] },
-          action: { setState: { target: 'field.isVisible', value: false } },
+          action: { set: { target: 'field.isVisible', value: false } },
           priority: 1
         }
       ];
@@ -383,7 +383,7 @@ describe('RuleValidator', () => {
       const rules: FieldRule[] = [
         {
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'field.isVisible', value: true } },
+          action: { set: { target: 'field.isVisible', value: true } },
           priority: Number.MAX_SAFE_INTEGER
         }
       ];

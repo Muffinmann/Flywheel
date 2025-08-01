@@ -13,7 +13,7 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         test_field: [{
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'test_field.isRequired', value: true } },
+          action: { set: { target: 'test_field.isRequired', value: true } },
           priority: 1
         }]
       };
@@ -26,9 +26,13 @@ describe('RuleEngine Orchestration', () => {
     test('should coordinate between DependencyGraph and FieldStateProvider for cache invalidation', () => {
       const ruleSet: RuleSet = {
         dependent: [{
-          condition: { '==': [{ var: ['source'] }, 'active'] },
-          action: { setState: { target: 'dependent.isVisible', value: true } },
+          condition: { '==': [{ var: ['source.value'] }, 'active'] },
+          action: { set: { target: 'dependent.isVisible', value: true } },
           priority: 1
+        }, {
+          condition: { '!=': [{ var: ['source.value'] }, 'active'] },
+          action: { set: { target: 'dependent.isVisible', value: false } },
+          priority: 2
         }]
       };
 
@@ -52,12 +56,12 @@ describe('RuleEngine Orchestration', () => {
         conflict_field: [
           {
             condition: { '==': [1, 1] },
-            action: { setState: { target: 'conflict_field.isVisible', value: true } },
+            action: { set: { target: 'conflict_field.isVisible', value: true } },
             priority: 1
           },
           {
             condition: { '==': [1, 1] },
-            action: { setState: { target: 'conflict_field.isVisible', value: false } },
+            action: { set: { target: 'conflict_field.isVisible', value: false } },
             priority: 1
           }
         ]
@@ -73,8 +77,8 @@ describe('RuleEngine Orchestration', () => {
     test('should coordinate between LookupManager and LogicResolver', () => {
       const ruleSet: RuleSet = {
         lookup_field: [{
-          condition: { '==': [{ lookup: ['test_table', { var: ['key'] }, 'status'] }, 'active'] },
-          action: { setState: { target: 'lookup_field.isVisible', value: true } },
+          condition: { '==': [{ lookup: ['test_table', { var: ['key.value'] }, 'status'] }, 'active'] },
+          action: { set: { target: 'lookup_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -105,22 +109,19 @@ describe('RuleEngine Orchestration', () => {
         }
       });
 
-      engine.registerCustomAction('track', {
-        handler: (payload, context) => {
-          // Simplified tracking - just add to evaluation order
-          evaluationOrder.push(payload.fieldName);
-        },
-        targetExtractor: () => []
+      engine.registerActionHandler('track', (payload, context) => {
+        // Simplified tracking - just add to evaluation order
+        evaluationOrder.push(payload.fieldName);
       });
 
       const ruleSet: RuleSet = {
         level1: [{
-          condition: { '==': [{ var: ['base'] }, 'start'] },
+          condition: { '==': [{ var: ['base.value'] }, 'start'] },
           action: { track: { fieldName: 'level1' } } as any,
           priority: 1
         }],
         level2: [{
-          condition: { '==': [{ fieldState: ['level1.isVisible'] }, true] },
+          condition: { '==': [{ var: ['level1.isVisible'] }, true] },
           action: { track: { fieldName: 'level2' } } as any,
           priority: 1
         }]
@@ -139,11 +140,8 @@ describe('RuleEngine Orchestration', () => {
     test('should orchestrate rule priority execution', () => {
       const executionOrder: number[] = [];
       
-      engine.registerCustomAction('track_priority', {
-        handler: (payload) => {
-          executionOrder.push(payload.priority);
-        },
-        targetExtractor: () => []
+      engine.registerActionHandler('track_priority', (payload) => {
+        executionOrder.push(payload.priority);
       });
 
       const ruleSet: RuleSet = {
@@ -176,18 +174,18 @@ describe('RuleEngine Orchestration', () => {
   describe('Configuration Orchestration', () => {
     test('should orchestrate shared rules registration across modules', () => {
       const sharedRules = {
-        common_condition: { '==': [{ var: ['status'] }, 'enabled'] }
+        common_condition: { '==': [{ var: ['status.value'] }, 'enabled'] }
       };
 
       const ruleSet: RuleSet = {
         field1: [{
           condition: { '$ref': 'common_condition' },
-          action: { setState: { target: 'field1.isVisible', value: true } },
+          action: { set: { target: 'field1.isVisible', value: true } },
           priority: 1
         }],
         field2: [{
           condition: { '$ref': 'common_condition' },
-          action: { setState: { target: 'field2.isVisible', value: true } },
+          action: { set: { target: 'field2.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -215,11 +213,11 @@ describe('RuleEngine Orchestration', () => {
 
       const ruleSet: RuleSet = {
         status_display: [{
-          condition: { '>': [{ lookup: ['status_codes', { var: ['current_status'] }, 'priority'] }, 0] },
+          condition: { '>': [{ lookup: ['status_codes', { var: ['current_status.value'] }, 'priority'] }, 0] },
           action: { 
-            calculateState: { 
+            calculate: { 
               target: 'status_display.calculatedValue',
-              formula: { lookup: ['status_codes', { var: ['current_status'] }, 'description'] }
+              formula: { lookup: ['status_codes', { var: ['current_status.value'] }, 'description'] }
             } 
           },
           priority: 1
@@ -244,8 +242,8 @@ describe('RuleEngine Orchestration', () => {
 
       const ruleSet: RuleSet = {
         secure_field: [{
-          condition: { '==': [{ var: ['user_role'] }, 'admin'] },
-          action: { setState: { target: 'secure_field.permissions.write', value: true } },
+          condition: { '==': [{ var: ['user_role.value'] }, 'admin'] },
+          action: { set: { target: 'secure_field.permissions.write', value: true } },
           priority: 1
         }]
       };
@@ -267,7 +265,7 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         error_field: [{
           condition: { '$ref': 'nonexistent_rule' },
-          action: { setState: { target: 'error_field.isVisible', value: true } },
+          action: { set: { target: 'error_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -282,13 +280,13 @@ describe('RuleEngine Orchestration', () => {
     test('should handle circular dependency detection during orchestration', () => {
       const ruleSet: RuleSet = {
         circular_a: [{
-          condition: { '==': [{ var: ['circular_b'] }, 'trigger'] },
-          action: { setState: { target: 'circular_a.isVisible', value: true } },
+          condition: { '==': [{ var: ['circular_b.value'] }, 'trigger'] },
+          action: { set: { target: 'circular_a.isVisible', value: true } },
           priority: 1
         }],
         circular_b: [{
-          condition: { '==': [{ var: ['circular_a'] }, 'trigger'] },
-          action: { setState: { target: 'circular_b.isVisible', value: true } },
+          condition: { '==': [{ var: ['circular_a.value'] }, 'trigger'] },
+          action: { set: { target: 'circular_b.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -303,11 +301,8 @@ describe('RuleEngine Orchestration', () => {
     test('should orchestrate caching across evaluations', () => {
       let evaluationCount = 0;
       
-      engine.registerCustomAction('count_evaluation', {
-        handler: () => {
-          evaluationCount++;
-        },
-        targetExtractor: () => []
+      engine.registerActionHandler('count_evaluation', () => {
+        evaluationCount++;
       });
 
       const ruleSet: RuleSet = {
@@ -332,9 +327,13 @@ describe('RuleEngine Orchestration', () => {
     test('should orchestrate cache invalidation on field updates', () => {
       const ruleSet: RuleSet = {
         dependent_field: [{
-          condition: { '==': [{ var: ['source'] }, 'active'] },
-          action: { setState: { target: 'dependent_field.isVisible', value: true } },
+          condition: { '==': [{ var: ['source.value'] }, 'active'] },
+          action: { set: { target: 'dependent_field.isVisible', value: true } },
           priority: 1
+        }, {
+          condition: { '!=': [{ var: ['source.value'] }, 'active'] },
+          action: { set: { target: 'dependent_field.isVisible', value: false } },
+          priority: 2
         }]
       };
 

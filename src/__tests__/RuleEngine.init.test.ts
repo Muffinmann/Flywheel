@@ -51,10 +51,9 @@ describe('RuleEngine - Init Action', () => {
       engine.loadRuleSet(ruleSet);
       engine.evaluateField('user_preference');
       
-      // Update the engine to get field value
-      engine.updateField({ dummy: 'trigger' }); // Trigger context rebuild
-      const context = (engine as any).context;
-      expect(context.user_preference).toBe('dark-mode');
+      // Check field value using unified context
+      const context = (engine as any).fieldStateManager.buildEvaluationContext((engine as any).context);
+      expect(context.user_preference.value).toBe('dark-mode');
     });
 
     test('should initialize both field state and value', () => {
@@ -80,9 +79,8 @@ describe('RuleEngine - Init Action', () => {
       expect(fieldState.isVisible).toBe(true);
       expect(fieldState.plans).toEqual(['basic', 'pro', 'enterprise']);
       
-      engine.updateField({ dummy: 'trigger' });
-      const context = (engine as any).context;
-      expect(context.subscription).toBe('pro');
+      const context = (engine as any).fieldStateManager.buildEvaluationContext((engine as any).context);
+      expect(context.subscription.value).toBe('pro');
     });
   });
 
@@ -91,7 +89,7 @@ describe('RuleEngine - Init Action', () => {
       const ruleSet: RuleSet = {
         payment_options: [
           {
-            condition: { '==': [{ var: 'user.role' }, 'premium'] },
+            condition: { '==': [{ var: ['user.value.role'] }, 'premium'] },
             action: {
               init: {
                 fieldState: {
@@ -104,7 +102,7 @@ describe('RuleEngine - Init Action', () => {
             priority: 0
           },
           {
-            condition: { '==': [{ var: 'user.role' }, 'basic'] },
+            condition: { '==': [{ var: ['user.value.role'] }, 'basic'] },
             action: {
               init: {
                 fieldState: {
@@ -141,7 +139,7 @@ describe('RuleEngine - Init Action', () => {
       const ruleSet: RuleSet = {
         feature_flag: [
           {
-            condition: { var: 'beta.enabled' },
+            condition: { var: ['beta.value.enabled'] },
             action: {
               init: {
                 fieldState: {
@@ -186,8 +184,8 @@ describe('RuleEngine - Init Action', () => {
     });
   });
 
-  describe('Merge Behavior', () => {
-    test('should merge with default state when merge is true', () => {
+  describe('Field State Initialization', () => {
+    test('should merge init state with default state', () => {
       const engine = new RuleEngine({
         onFieldStateCreation: () => ({
           isVisible: false,
@@ -205,7 +203,6 @@ describe('RuleEngine - Init Action', () => {
                 isVisible: true,
                 customProp: 'custom'
               },
-              merge: true
             }
           },
           priority: 0
@@ -221,7 +218,7 @@ describe('RuleEngine - Init Action', () => {
       expect(fieldState.customProp).toBe('custom'); // Added
     });
 
-    test('should replace default state when merge is false', () => {
+    test('should merge init state properties with defaults', () => {
       const engine = new RuleEngine({
         onFieldStateCreation: () => ({
           isVisible: false,
@@ -239,7 +236,6 @@ describe('RuleEngine - Init Action', () => {
                 isVisible: true,
                 customProp: 'custom'
               },
-              merge: false
             }
           },
           priority: 0
@@ -249,10 +245,10 @@ describe('RuleEngine - Init Action', () => {
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('test_field');
       
-      expect(fieldState.isVisible).toBe(true); // From init
-      expect(fieldState.isRequired).toBe(false); // From base default (not custom default)
-      expect(fieldState.defaultProp).toBeUndefined(); // Not included
-      expect(fieldState.customProp).toBe('custom'); // Added
+      expect(fieldState.isVisible).toBe(true); // Overridden by init
+      expect(fieldState.isRequired).toBe(false); // Kept from default  
+      expect(fieldState.defaultProp).toBe('default'); // Kept from default
+      expect(fieldState.customProp).toBe('custom'); // Added by init
     });
   });
 
@@ -357,7 +353,7 @@ describe('RuleEngine - Init Action', () => {
           {
             condition: { '==': [1, 1] },
             action: {
-              setState: {
+              set: {
                 target: 'integration_test.modified',
                 value: true
               }
@@ -382,15 +378,9 @@ describe('RuleEngine - Init Action', () => {
       const customEngine = new RuleEngine();
       
       // Track action executions
-      customEngine.registerCustomAction('trackInit', {
-        handler: () => { initCount++; },
-        targetExtractor: () => []
-      });
+      customEngine.registerActionHandler('trackInit', () => { initCount++; });
       
-      customEngine.registerCustomAction('trackRegular', {
-        handler: () => { regularCount++; },
-        targetExtractor: () => []
-      });
+      customEngine.registerActionHandler('trackRegular', () => { regularCount++; });
 
       const ruleSet: RuleSet = {
         tracking_test: [
@@ -443,26 +433,6 @@ describe('RuleEngine - Init Action', () => {
       }).toThrow('Init action must specify either fieldState or fieldValue');
     });
 
-    test('should throw error if merge is not boolean', () => {
-      const ruleSet: RuleSet = {
-        invalid_merge: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {
-              fieldState: { test: true },
-              merge: 'yes' as any
-            }
-          },
-          priority: 0
-        }]
-      };
-
-      engine.loadRuleSet(ruleSet);
-      
-      expect(() => {
-        engine.evaluateField('invalid_merge');
-      }).toThrow('Init action merge flag must be a boolean');
-    });
 
     test('should throw error if fieldState is not an object', () => {
       const ruleSet: RuleSet = {

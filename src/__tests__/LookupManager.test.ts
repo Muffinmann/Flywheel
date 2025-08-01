@@ -86,7 +86,7 @@ describe('LookupManager', () => {
     });
 
     test('should resolve varTable syntax with lookup', () => {
-      const context = { selectedProduct: 'prod1' };
+      const context = { selectedProduct: { value: 'prod1' } };
       
       const result = logicResolver.resolve(
         { varTable: ['selectedProduct@products.price'] },
@@ -97,7 +97,7 @@ describe('LookupManager', () => {
     });
 
     test('should resolve varTable syntax for different properties', () => {
-      const context = { selectedProduct: 'prod2' };
+      const context = { selectedProduct: { value: 'prod2' } };
       
       const nameResult = logicResolver.resolve(
         { varTable: ['selectedProduct@products.name'] },
@@ -113,7 +113,7 @@ describe('LookupManager', () => {
     });
 
     test('should return undefined for non-existent records', () => {
-      const context = { selectedProduct: 'non_existent' };
+      const context = { selectedProduct: { value: 'non_existent' } };
       
       const result = logicResolver.resolve(
         { varTable: ['selectedProduct@products.price'] },
@@ -124,7 +124,7 @@ describe('LookupManager', () => {
     });
 
     test('should return undefined for non-existent properties', () => {
-      const context = { selectedProduct: 'prod1' };
+      const context = { selectedProduct: { value: 'prod1' } };
       
       const result = logicResolver.resolve(
         { varTable: ['selectedProduct@products.nonExistentProperty'] },
@@ -135,7 +135,7 @@ describe('LookupManager', () => {
     });
 
     test('should throw error for non-existent table', () => {
-      const context = { selectedProduct: 'prod1' };
+      const context = { selectedProduct: { value: 'prod1' } };
       
       expect(() => {
         logicResolver.resolve(
@@ -146,7 +146,7 @@ describe('LookupManager', () => {
     });
 
     test('should handle varTable syntax without @ (fallback to regular var)', () => {
-      const context = { simpleField: 'simple_value' };
+      const context = { simpleField: { value: 'simple_value' } };
       
       const result = logicResolver.resolve(
         { varTable: ['simpleField'] },
@@ -157,7 +157,7 @@ describe('LookupManager', () => {
     });
 
     test('should handle invalid varTable path format', () => {
-      const context = { field: 'value' };
+      const context = { field: { value: 'value' } };
       
       const result = logicResolver.resolve(
         { varTable: [123] }, // Invalid path type
@@ -182,10 +182,10 @@ describe('LookupManager', () => {
     });
 
     test('should resolve basic lookup operations', () => {
-      const context = { selectedId: 'prod1' };
+      const context = { selectedId: { value: 'prod1' } };
       
       const result = logicResolver.resolve(
-        { lookup: ['products', { var: ['selectedId'] }, 'price'] },
+        { lookup: ['products', { var: ['selectedId.value'] }, 'price'] },
         context
       );
 
@@ -193,10 +193,10 @@ describe('LookupManager', () => {
     });
 
     test('should resolve lookup with complex key logic', () => {
-      const context = { selectedKey: 'prod2' };
+      const context = { selectedKey: { value: 'prod2' } };
       
       const result = logicResolver.resolve(
-        { lookup: ['products', { var: ['selectedKey'] }, 'name'] },
+        { lookup: ['products', { var: ['selectedKey.value'] }, 'name'] },
         context
       );
 
@@ -204,10 +204,10 @@ describe('LookupManager', () => {
     });
 
     test('should resolve lookup for nested properties', () => {
-      const context = { selectedId: 'prod1' };
+      const context = { selectedId: { value: 'prod1' } };
       
       const result = logicResolver.resolve(
-        { lookup: ['products', { var: ['selectedId'] }, 'specs'] },
+        { lookup: ['products', { var: ['selectedId.value'] }, 'specs'] },
         context
       );
 
@@ -215,10 +215,10 @@ describe('LookupManager', () => {
     });
 
     test('should return undefined for non-existent records in lookup', () => {
-      const context = { selectedId: 'non_existent' };
+      const context = { selectedId: { value: 'non_existent' } };
       
       const result = logicResolver.resolve(
-        { lookup: ['products', { var: ['selectedId'] }, 'price'] },
+        { lookup: ['products', { var: ['selectedId.value'] }, 'price'] },
         context
       );
 
@@ -226,10 +226,10 @@ describe('LookupManager', () => {
     });
 
     test('should return undefined for non-existent properties in lookup', () => {
-      const context = { selectedId: 'prod1' };
+      const context = { selectedId: { value: 'prod1' } };
       
       const result = logicResolver.resolve(
-        { lookup: ['products', { var: ['selectedId'] }, 'nonExistentProperty'] },
+        { lookup: ['products', { var: ['selectedId.value'] }, 'nonExistentProperty'] },
         context
       );
 
@@ -237,11 +237,11 @@ describe('LookupManager', () => {
     });
 
     test('should throw error for non-existent table in lookup', () => {
-      const context = { selectedId: 'prod1' };
+      const context = { selectedId: { value: 'prod1' } };
       
       expect(() => {
         logicResolver.resolve(
-          { lookup: ['missing_table', { var: ['selectedId'] }, 'price'] },
+          { lookup: ['missing_table', { var: ['selectedId.value'] }, 'price'] },
           context
         );
       }).toThrow("Lookup table 'missing_table' not found");
@@ -259,14 +259,14 @@ describe('LookupManager', () => {
 
       // Invalid table name type
       result = logicResolver.resolve(
-        { lookup: [123, { var: ['id'] }, 'property'] },
+        { lookup: [123, { var: ['id.value'] }, 'property'] },
         context
       );
       expect(result).toBeUndefined();
 
       // Invalid property type
       result = logicResolver.resolve(
-        { lookup: ['products', { var: ['id'] }, 123] },
+        { lookup: ['products', { var: ['id.value'] }, 123] },
         context
       );
       expect(result).toBeUndefined();
@@ -296,11 +296,11 @@ describe('LookupManager', () => {
     });
 
     test('should handle chained lookups', () => {
-      const context = { currentUser: 'user1' };
+      const context = { currentUser: { value: 'user1' } };
       
       // First lookup: get user's department ID
       const departmentId = logicResolver.resolve(
-        { lookup: ['users', { var: ['currentUser'] }, 'departmentId'] },
+        { lookup: ['users', { var: ['currentUser.value'] }, 'departmentId'] },
         context
       );
       
@@ -315,12 +315,12 @@ describe('LookupManager', () => {
     });
 
     test('should work in complex logical expressions', () => {
-      const context = { currentUser: 'user2' };
+      const context = { currentUser: { value: 'user2' } };
       
       const result = logicResolver.resolve(
         {
           '>': [
-            { lookup: ['departments', { lookup: ['users', { var: ['currentUser'] }, 'departmentId'] }, 'budget'] },
+            { lookup: ['departments', { lookup: ['users', { var: ['currentUser.value'] }, 'departmentId'] }, 'budget'] },
             75000
           ]
         },
@@ -331,12 +331,12 @@ describe('LookupManager', () => {
     });
 
     test('should handle lookup in conditional logic', () => {
-      const context = { currentUser: 'user1' };
+      const context = { currentUser: { value: 'user1' } };
       
       const result = logicResolver.resolve(
         {
           if: [
-            { '==': [{ lookup: ['users', { var: ['currentUser'] }, 'departmentId'] }, 'dept1'] },
+            { '==': [{ lookup: ['users', { var: ['currentUser.value'] }, 'departmentId'] }, 'dept1'] },
             'Engineering User',
             'Other User'
           ]
@@ -401,9 +401,9 @@ describe('LookupManager', () => {
       
       lookupManager.registerLookupTables([tableConfig]);
       
-      const context = { key: 'any_key' };
+      const context = { key: { value: 'any_key' } };
       const result = logicResolver.resolve(
-        { lookup: ['empty_table', { var: ['key'] }, 'property'] },
+        { lookup: ['empty_table', { var: ['key.value'] }, 'property'] },
         context
       );
       
@@ -423,20 +423,20 @@ describe('LookupManager', () => {
       
       lookupManager.registerLookupTables([tableConfig]);
       
-      const context1 = { key: 'item1' };
-      const context2 = { key: 'item2' };
-      const context3 = { key: 'item3' };
+      const context1 = { key: { value: 'item1' } };
+      const context2 = { key: { value: 'item2' } };
+      const context3 = { key: { value: 'item3' } };
       
       const result1 = logicResolver.resolve(
-        { lookup: ['nullable_table', { var: ['key'] }, 'value'] },
+        { lookup: ['nullable_table', { var: ['key.value'] }, 'value'] },
         context1
       );
       const result2 = logicResolver.resolve(
-        { lookup: ['nullable_table', { var: ['key'] }, 'value'] },
+        { lookup: ['nullable_table', { var: ['key.value'] }, 'value'] },
         context2
       );
       const result3 = logicResolver.resolve(
-        { lookup: ['nullable_table', { var: ['key'] }, 'value'] },
+        { lookup: ['nullable_table', { var: ['key.value'] }, 'value'] },
         context3
       );
       
@@ -457,9 +457,9 @@ describe('LookupManager', () => {
       
       lookupManager.registerLookupTables([tableConfig]);
       
-      const context = { key: 'dup' };
+      const context = { key: { value: 'dup' } };
       const result = logicResolver.resolve(
-        { lookup: ['duplicate_table', { var: ['key'] }, 'name'] },
+        { lookup: ['duplicate_table', { var: ['key.value'] }, 'name'] },
         context
       );
       
@@ -479,9 +479,9 @@ describe('LookupManager', () => {
       
       lookupManager.registerLookupTables([tableConfig]);
       
-      const context = { lookupKey: 'user:123:profile' };
+      const context = { lookupKey: { value: 'user:123:profile' } };
       const result = logicResolver.resolve(
-        { lookup: ['complex_keys', { var: ['lookupKey'] }, 'data'] },
+        { lookup: ['complex_keys', { var: ['lookupKey.value'] }, 'data'] },
         context
       );
       

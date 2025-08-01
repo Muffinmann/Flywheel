@@ -5,98 +5,90 @@ describe('ActionHandler', () => {
   let actionHandler: ActionHandler;
   let logicResolver: LogicResolver;
   let mockOnEvent: jest.Mock;
-  let mockOnFieldValueSet: jest.Mock;
-  let mockOnFieldStateSet: jest.Mock;
+  let mockOnFieldPropertySet: jest.Mock;
+  let mockOnFieldInit: jest.Mock;
 
   beforeEach(() => {
     logicResolver = new LogicResolver();
     mockOnEvent = jest.fn();
-    mockOnFieldValueSet = jest.fn();
-    mockOnFieldStateSet = jest.fn();
+    mockOnFieldPropertySet = jest.fn();
+    mockOnFieldInit = jest.fn();
     
     actionHandler = new ActionHandler(logicResolver, {
       onEvent: mockOnEvent,
-      onFieldValueSet: mockOnFieldValueSet,
-      onFieldStateSet: mockOnFieldStateSet
+      onFieldPropertySet: mockOnFieldPropertySet,
+      onFieldInit: mockOnFieldInit
     });
   });
 
   describe('Built-in Actions', () => {
-    test('should handle SET action for field values', () => {
+    test('should handle SET action for field properties', () => {
       const action: Action = {
-        set: { target: 'field', value: 'value' }
+        set: { target: 'field.value', value: 'test_value' }
       };
 
       actionHandler.executeAction(action, {});
 
-      expect(mockOnFieldValueSet).toHaveBeenCalledWith('field', 'value');
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.value', 'test_value');
     });
 
-    test('should handle SET action for field values only', () => {
+    test('should handle SET action for field state properties', () => {
       const action: Action = {
-        set: { target: 'field_value', value: 'test_value' }
+        set: { target: 'field.isVisible', value: true }
       };
 
       actionHandler.executeAction(action, {});
 
-      // set action now only handles field values, not field state
-      expect(mockOnFieldValueSet).toHaveBeenCalledWith('field_value', 'test_value');
-      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.isVisible', true);
     });
 
-    test('should handle setState action', () => {
+    test('should handle SET action with dot notation targets', () => {
       const action: Action = {
-        setState: { target: 'field.isVisible', value: true }
+        set: { target: 'field.nested.property', value: 'nested_value' }
       };
 
       actionHandler.executeAction(action, {});
 
-      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.isVisible', true);
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.nested.property', 'nested_value');
     });
 
-    test('should handle COPY action for field values', () => {
+    test('should handle COPY action', () => {
       const action: Action = {
-        copy: { source: 'sourceField', target: 'target_field' }
+        copy: { source: 'sourceField.value', target: 'targetField.value' }
       };
-      const context = { sourceField: 'copied_value' };
+      const context = { sourceField: { value: 'copied_value' } };
 
       actionHandler.executeAction(action, context);
 
-      // copy action now only handles field values
-      expect(mockOnFieldValueSet).toHaveBeenCalledWith('target_field', 'copied_value');
-      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('targetField.value', 'copied_value');
     });
 
-    test('should handle CALCULATE action with field value target', () => {
+    test('should handle CALCULATE action', () => {
       const action: Action = {
         calculate: {
-          target: 'total_field',
-          formula: { '+': [{ var: ['a'] }, { var: ['b'] }] }
+          target: 'totalField.value',
+          formula: { '+': [{ var: ['a.value'] }, { var: ['b.value'] }] }
         }
       };
-      const context = { a: 10, b: 5 };
+      const context = { a: { value: 10 }, b: { value: 5 } };
 
       actionHandler.executeAction(action, context);
 
-      // calculate action now sets field values
-      expect(mockOnFieldValueSet).toHaveBeenCalledWith('total_field', 15);
-      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('totalField.value', 15);
     });
 
-    test('should handle CALCULATE_STATE action with field state target', () => {
+    test('should handle CALCULATE action for field state properties', () => {
       const action: Action = {
-        calculateState: {
+        calculate: {
           target: 'field.calculatedValue',
-          formula: { '+': [{ var: ['a'] }, { var: ['b'] }] }
+          formula: { '+': [{ var: ['a.value'] }, { var: ['b.value'] }] }
         }
       };
-      const context = { a: 10, b: 5 };
+      const context = { a: { value: 10 }, b: { value: 5 } };
 
       actionHandler.executeAction(action, context);
 
-      // calculateState action sets field state properties
-      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.calculatedValue', 15);
-      expect(mockOnFieldValueSet).not.toHaveBeenCalled();
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.calculatedValue', 15);
     });
 
     test('should handle TRIGGER action', () => {
@@ -112,18 +104,16 @@ describe('ActionHandler', () => {
     test('should handle BATCH action', () => {
       const action: Action = {
         batch: [
-          { setState: { target: 'field.isVisible', value: true } },
-          { setState: { target: 'field.isRequired', value: true } }
+          { set: { target: 'field.isVisible', value: true } },
+          { set: { target: 'field.isRequired', value: true } }
         ]
       };
 
       actionHandler.executeAction(action, {});
 
-      // Both actions use setState for field state properties
-      expect(mockOnFieldStateSet).toHaveBeenCalledTimes(2);
-      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.isVisible', true);
-      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.isRequired', true);
-      expect(mockOnFieldValueSet).not.toHaveBeenCalled();
+      expect(mockOnFieldPropertySet).toHaveBeenCalledTimes(2);
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.isVisible', true);
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.isRequired', true);
     });
   });
 
@@ -153,50 +143,47 @@ describe('ActionHandler', () => {
       actionHandler.registerActionHandler('set', customSetHandler);
 
       const action: Action = {
-        set: { target: 'field_value', value: 'test' }
+        set: { target: 'field.value', value: 'test' }
       };
 
       actionHandler.executeAction(action, {});
 
-      expect(customSetHandler).toHaveBeenCalledWith({ target: 'field_value', value: 'test' }, {});
-      expect(mockOnFieldValueSet).not.toHaveBeenCalled();
-      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
+      expect(customSetHandler).toHaveBeenCalledWith({ target: 'field.value', value: 'test' }, {});
+      expect(mockOnFieldPropertySet).not.toHaveBeenCalled();
     });
   });
 
 
 
   describe('Edge Cases', () => {
-    test('should handle COPY action with complex var expressions', () => {
+    test('should handle COPY action with complex nested paths', () => {
       const action: Action = {
-        copy: { source: 'nested.field.value', target: 'target_field' }
+        copy: { source: 'nested.field.value', target: 'targetField.value' }
       };
       const context = { nested: { field: { value: 'deep_value' } } };
 
       actionHandler.executeAction(action, context);
 
-      expect(mockOnFieldValueSet).toHaveBeenCalledWith('target_field', 'deep_value');
-      expect(mockOnFieldStateSet).not.toHaveBeenCalled();
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('targetField.value', 'deep_value');
     });
 
-    test('should handle CALCULATE_STATE action with nested logic', () => {
+    test('should handle CALCULATE action with nested logic', () => {
       const action: Action = {
-        calculateState: {
+        calculate: {
           target: 'field.result',
           formula: {
             '+': [
-              { '*': [{ var: ['a'] }, 2] },
-              { var: ['b'] }
+              { '*': [{ var: ['a.value'] }, 2] },
+              { var: ['b.value'] }
             ]
           }
         }
       };
-      const context = { a: 5, b: 3 };
+      const context = { a: { value: 5 }, b: { value: 3 } };
 
       actionHandler.executeAction(action, context);
 
-      expect(mockOnFieldStateSet).toHaveBeenCalledWith('field.result', 13);
-      expect(mockOnFieldValueSet).not.toHaveBeenCalled();
+      expect(mockOnFieldPropertySet).toHaveBeenCalledWith('field.result', 13);
     });
 
     test('should handle TRIGGER action without params', () => {

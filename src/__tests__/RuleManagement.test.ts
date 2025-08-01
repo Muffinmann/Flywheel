@@ -85,7 +85,7 @@ describe('RuleManagement', () => {
         fields: {
           field1: [{
             condition: { '==': [1, 1] },
-            action: { setState: { target: 'field1.isVisible', value: true } },
+            action: { set: { target: 'field1.isVisible', value: true } },
             priority: 1
           }]
         },
@@ -98,12 +98,12 @@ describe('RuleManagement', () => {
         fields: {
           field1: [{
             condition: { '==': [2, 2] },
-            action: { setState: { target: 'field1.isRequired', value: true } },
+            action: { set: { target: 'field1.isRequired', value: true } },
             priority: 2
           }],
           field2: [{
             condition: { '==': [3, 3] },
-            action: { setState: { target: 'field2.isVisible', value: true } },
+            action: { set: { target: 'field2.isVisible', value: true } },
             priority: 1
           }]
         },
@@ -125,7 +125,7 @@ describe('RuleManagement', () => {
         fields: {
           field1: [{
             condition: { '==': [1, 1] },
-            action: { setState: { target: 'field1.isVisible', value: true } },
+            action: { set: { target: 'field1.isVisible', value: true } },
             priority: 1
           }]
         },
@@ -145,7 +145,7 @@ describe('RuleManagement', () => {
         fields: {
           field1: [{
             condition: { '==': [1, 1] },
-            action: { setState: { target: 'field1.isVisible', value: true } },
+            action: { set: { target: 'field1.isVisible', value: true } },
             priority: 1
           }]
         },
@@ -220,17 +220,17 @@ describe('RuleManagement', () => {
       const ruleSet: RuleSet = {
         field1: [{
           condition: { '==': [{ var: ['field2'] }, 'trigger'] },
-          action: { setState: { target: 'field1.isVisible', value: true } },
+          action: { set: { target: 'field1.isVisible', value: true } },
           priority: 1
         }],
         field2: [{
           condition: { '==': [{ var: ['field3'] }, 'trigger'] },
-          action: { setState: { target: 'field2.isVisible', value: true } },
+          action: { set: { target: 'field2.isVisible', value: true } },
           priority: 1
         }],
         field3: [{
           condition: { '==': [1, 1] },
-          action: { setState: { target: 'field3.isVisible', value: true } },
+          action: { set: { target: 'field3.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -244,17 +244,17 @@ describe('RuleManagement', () => {
       const ruleSet: RuleSet = {
         field1: [{
           condition: { '==': [{ var: ['field2'] }, 'trigger'] },
-          action: { setState: { target: 'field1.isVisible', value: true } },
+          action: { set: { target: 'field1.isVisible', value: true } },
           priority: 1
         }],
         field2: [{
           condition: { '==': [{ var: ['field3'] }, 'trigger'] },
-          action: { setState: { target: 'field2.isVisible', value: true } },
+          action: { set: { target: 'field2.isVisible', value: true } },
           priority: 1
         }],
         field3: [{
           condition: { '==': [{ var: ['field1'] }, 'trigger'] },
-          action: { setState: { target: 'field3.isVisible', value: true } },
+          action: { set: { target: 'field3.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -268,7 +268,7 @@ describe('RuleManagement', () => {
       const ruleSet: RuleSet = {
         field1: [{
           condition: { '==': [{ var: ['field1'] }, 'trigger'] },
-          action: { setState: { target: 'field1.isVisible', value: true } },
+          action: { set: { target: 'field1.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -290,7 +290,7 @@ describe('RuleManagement', () => {
               ]}
             ]
           },
-          action: { setState: { target: 'complex_field.isVisible', value: true } },
+          action: { set: { target: 'complex_field.isVisible', value: true } },
           priority: 1
         }]
       };
@@ -309,7 +309,7 @@ describe('RuleManagement', () => {
               { '>': [{ var: ['$'] }, 10] }
             ]
           },
-          action: { setState: { target: 'array_field.isVisible', value: true } },
+          action: { set: { target: 'array_field.isVisible', value: true } },
           priority: 1
         }]
       };
