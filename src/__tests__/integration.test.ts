@@ -106,11 +106,11 @@ describe('Integration Tests', () => {
       engine.loadRuleSet(ruleSet);
 
       // Test scenario: Premium user buying clothing with discount
-      engine.updateField({
+      engine.updateFieldValue({
         user: { tier: 'premium' },
-        product: { 
-          category: 'clothing', 
-          base_price: 80 
+        product: {
+          category: 'clothing',
+          base_price: 80
         },
         discount_code: 'SAVE20',
         discount_percentage: 20,
@@ -174,7 +174,7 @@ describe('Integration Tests', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ 
+      engine.updateFieldValue({
         product_price: 50,
         shipping_method: 'express'
       });
@@ -189,8 +189,8 @@ describe('Integration Tests', () => {
       expect(freeShippingNotice.isVisible).toBe(false);
 
       // Change to free shipping
-      engine.updateField({ shipping_method: 'free' });
-      
+      engine.updateFieldValue({ shipping_method: 'free' });
+
       // Re-evaluate after update - should cascade: shipping_cost -> total_cost -> free_shipping_notice
       shippingCost = engine.evaluateField('shipping_cost');
       totalCost = engine.evaluateField('total_cost');
@@ -302,19 +302,19 @@ describe('Integration Tests', () => {
       engine.loadRuleSet(ruleSet);
 
       // Step 1: Enter email
-      engine.updateField({ email: 'user@example.com' });
+      engine.updateFieldValue({ email: 'user@example.com' });
       engine.evaluateField('email_field');
 
       expect(validationEvents).toHaveLength(1);
       expect(validationEvents[0].eventType).toBe('validate_email');
 
       // Step 2: Enter password
-      engine.updateField({ password: 'secret123' });
+      engine.updateFieldValue({ password: 'secret123' });
       const passwordConfirm = engine.evaluateField('password_confirm');
       expect(passwordConfirm.isVisible).toBe(true);
 
       // Step 3: Enter mismatched password confirmation
-      engine.updateField({ password_confirm_input: 'secret456' });
+      engine.updateFieldValue({ password_confirm_input: 'secret456' });
       engine.evaluateField('password_validation'); // Trigger validation
       const invalidConfirm = engine.evaluateField('password_confirm');
       expect(invalidConfirm.isValid).toBe(false);
@@ -325,7 +325,7 @@ describe('Integration Tests', () => {
       expect(submitButton.isVisible).toBe(false);
 
       // Step 4: Fix password confirmation
-      engine.updateField({ password_confirm_input: 'secret123' });
+      engine.updateFieldValue({ password_confirm_input: 'secret123' });
       engine.evaluateField('password_validation'); // Trigger validation
       const validConfirm = engine.evaluateField('password_confirm');
       expect(validConfirm.isValid).toBe(true);
@@ -392,7 +392,7 @@ describe('Integration Tests', () => {
       engine.loadRuleSet(ruleSet);
 
       // Test with bilateral knee brace
-      engine.updateField({ selected_device: 'dev001' });
+      engine.updateFieldValue({ selected_device: 'dev001' });
 
       const bilateralOption = engine.evaluateField('bilateral_option');
       const prostheticOptions = engine.evaluateField('prosthetic_options');
@@ -403,7 +403,7 @@ describe('Integration Tests', () => {
       expect(deviceNameDisplay.calculatedValue).toBe('Knee Brace');
 
       // Test with prosthetic leg
-      engine.updateField({ selected_device: 'dev003' });
+      engine.updateFieldValue({ selected_device: 'dev003' });
 
       const bilateralOption2 = engine.evaluateField('bilateral_option');
       const prostheticOptions2 = engine.evaluateField('prosthetic_options');
@@ -444,7 +444,7 @@ describe('Integration Tests', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ trigger: true });
+      engine.updateFieldValue({ trigger: true });
 
       // First evaluation
       engine.evaluateField('cached_field');
@@ -455,7 +455,7 @@ describe('Integration Tests', () => {
       expect(evaluationCount).toBe(1); // Still 1, not 2
 
       // Change dependency should invalidate cache
-      engine.updateField({ trigger: false });
+      engine.updateFieldValue({ trigger: false });
       engine.evaluateField('cached_field');
       expect(evaluationCount).toBe(2); // Now 2
     });

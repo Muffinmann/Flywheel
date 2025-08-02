@@ -20,7 +20,7 @@ describe('RuleEngine Integration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ foot_guidance: 'foot_cup' });
+      engine.updateFieldValue({ foot_guidance: 'foot_cup' });
 
       const fieldState = engine.evaluateField('foot_cup_size');
       expect(fieldState.isVisible).toBe(true);
@@ -41,7 +41,7 @@ describe('RuleEngine Integration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ user_type: 'admin', experience_level: 7 });
+      engine.updateFieldValue({ user_type: 'admin', experience_level: 7 });
 
       const fieldState = engine.evaluateField('advanced_options');
       expect(fieldState.isVisible).toBe(true);
@@ -59,7 +59,7 @@ describe('RuleEngine Integration', () => {
 
       const ruleSet: RuleSet = {
         complex_field: [{
-          condition: { 
+          condition: {
             and: [
               { '==': [{ var: ['user_type.value'] }, 'admin'] },
               { '>': [{ var: ['score.value'] }, 80] }
@@ -77,10 +77,10 @@ describe('RuleEngine Integration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ user_type: 'admin', score: 85 });
+      engine.updateFieldValue({ user_type: 'admin', score: 85 });
 
       const fieldState = engine.evaluateField('complex_field');
-      
+
       expect(fieldState.isVisible).toBe(true);
       expect(fieldState.calculatedValue).toBe(127.5); // 85 * 1.5
       expect(events).toHaveLength(1);
@@ -107,12 +107,12 @@ describe('RuleEngine Integration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ trigger: 'start' });
+      engine.updateFieldValue({ trigger: 'start' });
 
       // Evaluating field_c should trigger evaluation of its dependencies
       const fieldC = engine.evaluateField('field_c');
       expect(fieldC.isVisible).toBe(true);
-      
+
       // Verify intermediate fields were also evaluated
       const fieldA = engine.evaluateField('field_a');
       const fieldB = engine.evaluateField('field_b');
@@ -202,12 +202,12 @@ describe('RuleEngine Integration', () => {
       engine.loadRuleSet(ruleSet);
 
       // First evaluation
-      engine.updateField({ source_field: 'show' });
+      engine.updateFieldValue({ source_field: 'show' });
       let fieldState = engine.evaluateField('dependent_field');
       expect(fieldState.isVisible).toBe(true);
 
       // Change dependency
-      const invalidated = engine.updateField({ source_field: 'hide' });
+      const invalidated = engine.updateFieldValue({ source_field: 'hide' });
       fieldState = engine.evaluateField('dependent_field');
 
       expect(invalidated).toContain('dependent_field');
@@ -250,7 +250,7 @@ describe('RuleEngine Integration', () => {
 
       engine.registerSharedRules(sharedRules);
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ user_role: 'admin' });
+      engine.updateFieldValue({ user_role: 'admin' });
 
       const fieldState = engine.evaluateField('admin_panel');
       expect(fieldState.isVisible).toBe(true);
@@ -309,7 +309,7 @@ describe('RuleEngine Integration', () => {
       engine.registerLookupTables([lookupTable]);
 
       // Test the @ syntax in field paths
-      engine.updateField({ selected_product: 'prod1' });
+      engine.updateFieldValue({ selected_product: 'prod1' });
       const productPriceState = engine.evaluateField('selected_product_price')
 
       expect(productPriceState.isVisible).toBeTruthy();
@@ -416,11 +416,11 @@ describe('RuleEngine Integration', () => {
 
       engine.loadRuleSet(ruleSet);
 
-      engine.updateField({ counter: 3 });
+      engine.updateFieldValue({ counter: 3 });
       let fieldState = engine.evaluateField('reactive_field');
       expect(fieldState.isVisible).toBe(false);
 
-      engine.updateField({ counter: 8 });
+      engine.updateFieldValue({ counter: 8 });
       fieldState = engine.evaluateField('reactive_field');
       expect(fieldState.isVisible).toBe(true);
     });
@@ -452,10 +452,12 @@ describe('RuleEngine Integration', () => {
             action: {
               batch: [
                 { set: { target: 'feature_access.isVisible', value: true } },
-                { calculate: { 
-                  target: 'feature_access.calculatedValue', 
-                  formula: { '*': [{ var: ['base_score.value'] }, { lookup: ['plans', { var: ['user_plan.value'] }, 'multiplier'] }] }
-                }},
+                {
+                  calculate: {
+                    target: 'feature_access.calculatedValue',
+                    formula: { '*': [{ var: ['base_score.value'] }, { lookup: ['plans', { var: ['user_plan.value'] }, 'multiplier'] }] }
+                  }
+                },
                 { set: { target: 'feature_access.customFlag', value: true } },
                 { trigger: { event: 'premium_access_granted', params: { plan: { var: ['user_plan.value'] } } } }
               ]
@@ -466,7 +468,7 @@ describe('RuleEngine Integration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ user_plan: 'premium', base_score: 100 });
+      engine.updateFieldValue({ user_plan: 'premium', base_score: 100 });
 
       const fieldState = engine.evaluateField('feature_access');
 

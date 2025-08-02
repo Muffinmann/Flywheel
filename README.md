@@ -55,7 +55,7 @@ const ruleSet = {
 
 // Load rules and evaluate
 engine.loadRuleSet(ruleSet);
-engine.updateField({ age: 25 });
+engine.updateFieldValue({ age: 25 });
 const fieldState = engine.evaluateField("field1");
 console.log(fieldState); // { isVisible: true, isRequired: false, ... }
 ```
@@ -112,7 +112,7 @@ constructor(options?: RuleEngineOptions)
 loadRuleSet(ruleSet: RuleSet): void
 
 // Update field values and trigger re-evaluation
-updateField(fieldUpdates: Record<string, any>): string[]
+updateFieldValue(fieldUpdates: Record<string, any>): string[]
 
 // Evaluate specific field and return complete state
 evaluateField(fieldName: string): FieldState
@@ -363,7 +363,7 @@ const initRules = {
 };
 
 engine.loadRuleSet(initRules);
-engine.updateField({ user: { subscription: 'premium' } });
+engine.updateFieldValue({ user: { subscription: 'premium' } });
 
 const settings = engine.evaluateField("userSettings");
 console.log(settings); 
@@ -402,11 +402,11 @@ const formRules = {
 engine.loadRuleSet(formRules);
 
 // User selects "married" - spouse info becomes visible
-engine.updateField({ maritalStatus: "married" });
+engine.updateFieldValue({ maritalStatus: "married" });
 console.log(engine.evaluateField("spouseInfo").isVisible); // true
 
 // User enters children count - dependent section appears
-engine.updateField({ children: 2 });
+engine.updateFieldValue({ children: 2 });
 console.log(engine.evaluateField("dependentCount").isVisible); // true
 ```
 
@@ -448,7 +448,7 @@ const calculationRules = {
 };
 
 engine.loadRuleSet(calculationRules);
-engine.updateField({ quantity: 5, unitPrice: 20.00 });
+engine.updateFieldValue({ quantity: 5, unitPrice: 20.00 });
 
 const totalField = engine.evaluateField("totalPrice");
 console.log(totalField.calculatedValue); // 108.00 (100 + 8% tax)
@@ -496,7 +496,7 @@ const productRules = {
 };
 
 engine.loadRuleSet(productRules);
-engine.updateField({ selectedProductId: "P001" });
+engine.updateFieldValue({ selectedProductId: "P001" });
 
 console.log(engine.evaluateField("productName").calculatedValue); // "Laptop"
 console.log(engine.evaluateField("shippingSection").isVisible);   // true
@@ -546,7 +546,7 @@ const membershipRules = {
 };
 
 engine.loadRuleSet(membershipRules);
-engine.updateField({ 
+engine.updateFieldValue({ 
   age: 25, 
   membershipYears: 3, 
   orderTotal: 100,
@@ -620,7 +620,7 @@ const validationRules = {
 engine.loadRuleSet(validationRules);
 
 // Trigger validation when email is entered
-engine.updateField({ 
+engine.updateFieldValue({ 
   email: "invalid-email", 
   password: "secret123", 
   confirmPassword: "secret123" 
@@ -702,10 +702,10 @@ const customLogicRules = {
 // Flywheel automatically optimizes performance through:
 
 // 1. Dependency-based caching
-engine.updateField({ age: 25 }); // Only age-dependent fields re-evaluate
+engine.updateFieldValue({ age: 25 }); // Only age-dependent fields re-evaluate
 
 // 2. Intelligent invalidation
-const invalidatedFields = engine.updateField({ name: "John" });
+const invalidatedFields = engine.updateFieldValue({ name: "John" });
 console.log(invalidatedFields); // ['displayName', 'greeting', ...]
 
 // 3. Debug utilities for performance analysis

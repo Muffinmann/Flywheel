@@ -20,7 +20,7 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ foot_guidance: 'foot_cup' });
+      engine.updateFieldValue({ foot_guidance: 'foot_cup' });
 
       const fieldState = engine.evaluateField('foot_cup_size');
       expect(fieldState.isVisible).toBe(true);
@@ -41,7 +41,7 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ user_type: 'admin', experience_level: 7 });
+      engine.updateFieldValue({ user_type: 'admin', experience_level: 7 });
 
       const fieldState = engine.evaluateField('advanced_options');
       expect(fieldState.isVisible).toBe(true);
@@ -73,13 +73,13 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ source_field: 'copied_value' });
-      
+      engine.updateFieldValue({ source_field: 'copied_value' });
+
       // Trigger the rule by evaluating the field
       engine.evaluateField('target_field');
 
       // COPY sets field values through FieldStateManager
-      const fieldValue = engine.getField('target_field');
+      const fieldValue = engine.getFieldValue('target_field');
       expect(fieldValue).toBe('copied_value');
     });
 
@@ -87,18 +87,18 @@ describe('RuleEngine', () => {
       const ruleSet: RuleSet = {
         target_field: [{
           condition: { '==': [1, 1] },
-          action: { 
-            calculate: { 
-              target: 'target_field.calculatedValue', 
-              formula: { var: ['source_field.value'] } 
-            } 
+          action: {
+            calculate: {
+              target: 'target_field.calculatedValue',
+              formula: { var: ['source_field.value'] }
+            }
           },
           priority: 1
         }]
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ source_field: 'copied_value' });
+      engine.updateFieldValue({ source_field: 'copied_value' });
 
       const fieldState = engine.evaluateField('target_field');
       expect(fieldState.calculatedValue).toBe('copied_value');
@@ -119,7 +119,7 @@ describe('RuleEngine', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ a: 10, b: 5 });
+      engine.updateFieldValue({ a: 10, b: 5 });
 
       const fieldState = engine.evaluateField('total_field');
       expect(fieldState.calculatedValue).toBe(15);
@@ -251,12 +251,12 @@ describe('RuleEngine', () => {
       engine.loadRuleSet(ruleSet);
 
       // First evaluation
-      engine.updateField({ source_field: 'show' });
+      engine.updateFieldValue({ source_field: 'show' });
       let fieldState = engine.evaluateField('dependent_field');
       expect(fieldState.isVisible).toBe(true);
 
       // Change dependency
-      const invalidated = engine.updateField({ source_field: 'hide' });
+      const invalidated = engine.updateFieldValue({ source_field: 'hide' });
       fieldState = engine.evaluateField('dependent_field');
 
       expect(invalidated).toContain('dependent_field');
@@ -299,7 +299,7 @@ describe('RuleEngine', () => {
 
       engine.registerSharedRules(sharedRules);
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ user_role: 'admin' });
+      engine.updateFieldValue({ user_role: 'admin' });
 
       const fieldState = engine.evaluateField('admin_panel');
       expect(fieldState.isVisible).toBe(true);
@@ -358,7 +358,7 @@ describe('RuleEngine', () => {
       engine.registerLookupTables([lookupTable]);
 
       // Test the @ syntax in field paths
-      engine.updateField({ selected_product: 'prod1' });
+      engine.updateFieldValue({ selected_product: 'prod1' });
       const productPriceState = engine.evaluateField('selected_product_price')
 
       expect(productPriceState.isVisible).toBeTruthy();
@@ -465,11 +465,11 @@ describe('RuleEngine', () => {
 
       engine.loadRuleSet(ruleSet);
 
-      engine.updateField({ counter: 3 });
+      engine.updateFieldValue({ counter: 3 });
       let fieldState = engine.evaluateField('reactive_field');
       expect(fieldState.isVisible).toBe(false);
 
-      engine.updateField({ counter: 8 });
+      engine.updateFieldValue({ counter: 8 });
       fieldState = engine.evaluateField('reactive_field');
       expect(fieldState.isVisible).toBe(true);
     });

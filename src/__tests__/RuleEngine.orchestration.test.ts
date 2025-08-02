@@ -37,16 +37,16 @@ describe('RuleEngine Orchestration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       // Initial state
-      engine.updateField({ source: 'active' });
+      engine.updateFieldValue({ source: 'active' });
       let fieldState = engine.evaluateField('dependent');
       expect(fieldState.isVisible).toBe(true);
 
       // Update dependency and verify cache invalidation
-      const invalidated = engine.updateField({ source: 'inactive' });
+      const invalidated = engine.updateFieldValue({ source: 'inactive' });
       expect(invalidated).toContain('dependent');
-      
+
       fieldState = engine.evaluateField('dependent');
       expect(fieldState.isVisible).toBe(false);
     });
@@ -90,7 +90,7 @@ describe('RuleEngine Orchestration', () => {
       }]);
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ key: 'item1' });
+      engine.updateFieldValue({ key: 'item1' });
 
       const fieldState = engine.evaluateField('lookup_field');
       expect(fieldState.isVisible).toBe(true);
@@ -100,7 +100,7 @@ describe('RuleEngine Orchestration', () => {
   describe('Evaluation Flow Orchestration', () => {
     test('should orchestrate dependency-first evaluation', () => {
       const evaluationOrder: string[] = [];
-      
+
       const engine = new RuleEngine({
         onEvent: (eventType, params) => {
           if (eventType === 'field_evaluated') {
@@ -128,7 +128,7 @@ describe('RuleEngine Orchestration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ base: 'start' });
+      engine.updateFieldValue({ base: 'start' });
 
       // Trigger evaluation of level2, which should evaluate level1 first
       engine.evaluateField('level2');
@@ -139,7 +139,7 @@ describe('RuleEngine Orchestration', () => {
 
     test('should orchestrate rule priority execution', () => {
       const executionOrder: number[] = [];
-      
+
       engine.registerActionHandler('track_priority', (payload) => {
         executionOrder.push(payload.priority);
       });
@@ -192,7 +192,7 @@ describe('RuleEngine Orchestration', () => {
 
       engine.registerSharedRules(sharedRules);
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ status: 'enabled' });
+      engine.updateFieldValue({ status: 'enabled' });
 
       const field1State = engine.evaluateField('field1');
       const field2State = engine.evaluateField('field2');
@@ -214,11 +214,11 @@ describe('RuleEngine Orchestration', () => {
       const ruleSet: RuleSet = {
         status_display: [{
           condition: { '>': [{ lookup: ['status_codes', { var: ['current_status.value'] }, 'priority'] }, 0] },
-          action: { 
-            calculate: { 
+          action: {
+            calculate: {
               target: 'status_display.calculatedValue',
               formula: { lookup: ['status_codes', { var: ['current_status.value'] }, 'description'] }
-            } 
+            }
           },
           priority: 1
         }]
@@ -226,7 +226,7 @@ describe('RuleEngine Orchestration', () => {
 
       engine.registerLookupTables([lookupTable]);
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ current_status: 'A' });
+      engine.updateFieldValue({ current_status: 'A' });
 
       const fieldState = engine.evaluateField('status_display');
       expect(fieldState.calculatedValue).toBe('Active');
@@ -249,10 +249,10 @@ describe('RuleEngine Orchestration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ user_role: 'admin' });
+      engine.updateFieldValue({ user_role: 'admin' });
 
       const fieldState = engine.evaluateField('secure_field');
-      
+
       expect(fieldState.permissions.read).toBe(true);
       expect(fieldState.permissions.write).toBe(true);
       expect(fieldState.metadata).toBeDefined();
@@ -300,7 +300,7 @@ describe('RuleEngine Orchestration', () => {
   describe('Performance Orchestration', () => {
     test('should orchestrate caching across evaluations', () => {
       let evaluationCount = 0;
-      
+
       engine.registerActionHandler('count_evaluation', () => {
         evaluationCount++;
       });
@@ -338,9 +338,9 @@ describe('RuleEngine Orchestration', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       // Initial state - condition is true
-      engine.updateField({ source: 'active' });
+      engine.updateFieldValue({ source: 'active' });
       let fieldState = engine.evaluateField('dependent_field');
       expect(fieldState.isVisible).toBe(true);
 
@@ -349,9 +349,9 @@ describe('RuleEngine Orchestration', () => {
       expect(fieldState.isVisible).toBe(true);
 
       // Update dependency - should invalidate cache and re-evaluate with new condition
-      const invalidated = engine.updateField({ source: 'inactive' });
+      const invalidated = engine.updateFieldValue({ source: 'inactive' });
       expect(invalidated).toContain('dependent_field');
-      
+
       fieldState = engine.evaluateField('dependent_field');
       expect(fieldState.isVisible).toBe(false); // Condition is now false, so default value
     });

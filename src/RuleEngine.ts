@@ -95,16 +95,16 @@ import { CacheManager } from './CacheManager';
  * // The engine always returns the full snapshot of field state.
  * ```
  *
- * 3. For "updateField", it:
+ * 3. For "updateFieldValue", it:
  *    a) Updates the field value in the internally managed context
  *    b) Re-evaluates all fields depend on this field
  *    c) Invalidates all corresponding caches.
  * ```ts
- * const invalidatedFieldCaches = engine.updateField({foot_guidance: "new value"})
+ * const invalidatedFieldCaches = engine.updateFieldValue({foot_guidance: "new value"})
  * // Returns: Array of field names whose caches were invalidated.
  *
  * // since this function accept an object, you can also update multiple fields at one time:
- * engine.updateField({
+ * engine.updateFieldValue({
  *  foot_guidance: "new value",
  *  knee_width: 11
  * })
@@ -264,7 +264,7 @@ export class RuleEngine {
         }
 
         const fieldName = target.substring(0, dotIndex);
-        
+
         // Use unified setFieldProperty for both value and state properties
         this.fieldStateManager.setFieldProperty(target, value);
         const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
@@ -328,7 +328,7 @@ export class RuleEngine {
     }
   }
 
-  updateField(fieldUpdates: Record<string, any>): string[] {
+  updateFieldValue(fieldUpdates: Record<string, any>): string[] {
     for (const [fieldName, value] of Object.entries(fieldUpdates)) {
       this.fieldStateManager.setFieldProperty(`${fieldName}.value`, value);
     }
@@ -339,7 +339,7 @@ export class RuleEngine {
     return invalidatedFields;
   }
 
-  getField(fieldName: string): any {
+  getFieldValue(fieldName: string): any {
     return this.fieldStateManager.getFieldProperty(`${fieldName}.value`);
   }
 
@@ -372,6 +372,7 @@ export class RuleEngine {
       });
 
       for (const rule of initRules) {
+        // The 'init' action handler in 'ActionHandler' requires 'context.currentFieldName' to know which field it's initializing.
         const context = { ...this.buildEvaluationContext(), currentFieldName: fieldName };
         const conditionResult = this.logicResolver.resolve(
           this.resolveSharedRules(rule.condition),

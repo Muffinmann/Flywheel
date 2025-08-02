@@ -14,7 +14,7 @@ describe('Edge Cases and Error Handling', () => {
     test('should handle null and undefined values gracefully', () => {
       expect(resolver.resolve(null, {})).toBe(null);
       expect(resolver.resolve(undefined, {})).toBe(undefined);
-      
+
       const context = { nullValue: null, undefinedValue: undefined };
       expect(resolver.resolve({ var: ['nullValue.value'] }, context)).toBe(undefined);
       expect(resolver.resolve({ var: ['undefinedValue.value'] }, context)).toBe(undefined);
@@ -23,7 +23,7 @@ describe('Edge Cases and Error Handling', () => {
     test('should handle deep object paths with missing intermediate values', () => {
       const context = { user: null };
       expect(resolver.resolve({ var: ['user.profile.name'] }, context)).toBe(undefined);
-      
+
       const context2 = {};
       expect(resolver.resolve({ var: ['missing.deeply.nested.value'] }, context2)).toBe(undefined);
     });
@@ -120,14 +120,14 @@ describe('Edge Cases and Error Handling', () => {
 
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('test_field');
-      
+
       expect(fieldState.isVisible).toBe(false); // Default value
     });
 
     test('should handle missing field evaluation', () => {
       engine.loadRuleSet({});
       const fieldState = engine.evaluateField('non_existent_field');
-      
+
       expect(fieldState.isVisible).toBe(false);
       expect(fieldState.isRequired).toBe(false);
       expect(fieldState.calculatedValue).toBe(undefined);
@@ -143,7 +143,7 @@ describe('Edge Cases and Error Handling', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       // Based on current implementation, this throws an error for invalid target format
       expect(() => {
         engine.evaluateField('malformed_field');
@@ -161,7 +161,7 @@ describe('Edge Cases and Error Handling', () => {
 
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('nested_field');
-      
+
       // Should set the property even with deep nesting
       expect(fieldState.deeply?.nested?.property).toBe('test');
     });
@@ -179,7 +179,7 @@ describe('Edge Cases and Error Handling', () => {
 
       // Rapid updates
       for (let i = 0; i < 100; i++) {
-        engine.updateField({ counter: i });
+        engine.updateFieldValue({ counter: i });
         engine.evaluateField('reactive_field');
       }
 
@@ -189,7 +189,7 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle very large rule sets', () => {
       const ruleSet: RuleSet = {};
-      
+
       // Generate 1000 fields with rules
       for (let i = 0; i < 1000; i++) {
         ruleSet[`field_${i}`] = [{
@@ -200,7 +200,7 @@ describe('Edge Cases and Error Handling', () => {
       }
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ trigger: 500 });
+      engine.updateFieldValue({ trigger: 500 });
 
       const fieldState = engine.evaluateField('field_500');
       expect(fieldState.isVisible).toBe(true);
@@ -221,7 +221,7 @@ describe('Edge Cases and Error Handling', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ shared_var: 'trigger' });
+      engine.updateFieldValue({ shared_var: 'trigger' });
 
       // Evaluate multiple fields that depend on the same variable
       const field1State = engine.evaluateField('field1');
@@ -245,7 +245,7 @@ describe('Edge Cases and Error Handling', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       expect(() => {
         engine.evaluateField('error_field');
       }).toThrow('Custom action error');
@@ -264,12 +264,12 @@ describe('Edge Cases and Error Handling', () => {
 
       // Simulate memory pressure
       for (let i = 0; i < 10000; i++) {
-        engine.updateField({ counter: i });
+        engine.updateFieldValue({ counter: i });
         engine.evaluateField('memory_field');
-        
+
         // Occasionally clear some state to test garbage collection
         if (i % 1000 === 0) {
-          engine.updateField({ counter: 0 });
+          engine.updateFieldValue({ counter: 0 });
         }
       }
 
@@ -383,7 +383,7 @@ describe('Edge Cases and Error Handling', () => {
       };
 
       engine.loadRuleSet(ruleSet);
-      
+
       expect(() => {
         engine.evaluateField('test_field');
       }).toThrow("Shared rule 'missing_shared_rule' not found");
@@ -391,7 +391,7 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle malformed logic objects', () => {
       const resolver = new LogicResolver();
-      
+
       expect(() => {
         resolver.resolve({ op1: [1], op2: [2] }, {});
       }).toThrow('Logic object must have exactly one operator');
@@ -401,19 +401,19 @@ describe('Edge Cases and Error Handling', () => {
       const ruleSet: RuleSet = {
         lookup_field: [{
           condition: { '==': [1, 1] },
-          action: { 
-            calculate: { 
+          action: {
+            calculate: {
               target: 'lookup_field.value',
               formula: { varTable: ['field@missing_table.property'] }
-            } 
+            }
           },
           priority: 1
         }]
       };
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ field: 'test_value' });
-      
+      engine.updateFieldValue({ field: 'test_value' });
+
       expect(() => {
         engine.evaluateField('lookup_field');
       }).toThrow("Lookup table 'missing_table' not found");
@@ -426,7 +426,7 @@ describe('Edge Cases and Error Handling', () => {
 
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('empty_field');
-      
+
       expect(fieldState.isVisible).toBe(false);
     });
   });
@@ -511,7 +511,7 @@ describe('Edge Cases and Error Handling', () => {
       for (let i = 0; i < 100; i++) {
         const fieldName = `field_${i}`;
         let condition;
-        
+
         if (i === 0) {
           // First field depends on root trigger
           condition = { '==': [{ var: ['root_trigger.value'] }, 'trigger'] };
@@ -519,7 +519,7 @@ describe('Edge Cases and Error Handling', () => {
           // Subsequent fields depend on previous field being visible
           condition = { '==': [{ var: [`field_${i - 1}.isVisible`] }, true] };
         }
-        
+
         ruleSet[fieldName] = [{
           condition: condition,
           action: { set: { target: `${fieldName}.isVisible`, value: true } },
@@ -528,7 +528,7 @@ describe('Edge Cases and Error Handling', () => {
       }
 
       engine.loadRuleSet(ruleSet);
-      engine.updateField({ root_trigger: 'trigger' });
+      engine.updateFieldValue({ root_trigger: 'trigger' });
 
       // This should not cause stack overflow
       const finalField = engine.evaluateField('field_99');
@@ -538,7 +538,7 @@ describe('Edge Cases and Error Handling', () => {
     test('should handle rules with very large operand arrays', () => {
       const resolver = new LogicResolver();
       const largeArray = Array.from({ length: 10000 }, (_, i) => i);
-      
+
       const result = resolver.resolve({ '+': largeArray }, {});
       const expectedSum = (10000 * 9999) / 2; // Sum of 0 to 9999
       expect(result).toBe(expectedSum);
