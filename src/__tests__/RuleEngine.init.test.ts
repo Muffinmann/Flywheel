@@ -52,7 +52,7 @@ describe('RuleEngine - Init Action', () => {
       engine.evaluateField('user_preference');
       
       // Check field value using unified context
-      const context = (engine as any).fieldStateManager.buildEvaluationContext((engine as any).context);
+      const context = (engine as any).fieldStateManager.buildEvaluationContext();
       expect(context.user_preference.value).toBe('dark-mode');
     });
 
@@ -79,7 +79,7 @@ describe('RuleEngine - Init Action', () => {
       expect(fieldState.isVisible).toBe(true);
       expect(fieldState.plans).toEqual(['basic', 'pro', 'enterprise']);
       
-      const context = (engine as any).fieldStateManager.buildEvaluationContext((engine as any).context);
+      const context = (engine as any).fieldStateManager.buildEvaluationContext();
       expect(context.subscription.value).toBe('pro');
     });
   });

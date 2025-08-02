@@ -131,7 +131,7 @@ export class FieldStateManager {
 
   buildEvaluationContext(): Record<string, any> {
     return Object.fromEntries(
-      Object.entries(this.fieldStates)
+      this.fieldStates.entries()
     )
   }
 
