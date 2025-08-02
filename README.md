@@ -13,12 +13,15 @@ A powerful, hierarchical rule engine for dynamic field configuration using a con
 - [Action Types](#action-types)
 - [Examples](#examples)
 - [Advanced Features](#advanced-features)
+- [Migration Guide](#migration-guide)
 
 ## Features
 
 - 🎯 **Condition-Action Rules**: Define when conditions trigger specific actions
 - 🔄 **Automatic Dependency Tracking**: Intelligent evaluation order and caching
 - ⚡ **Performance Optimized**: Smart caching with dependency-based invalidation
+- 🏗️ **Modular Architecture**: Separate components for field state, caching, and dependency management
+- 🚀 **Field Initialization**: Context-aware field initialization with init actions
 - 🧩 **Extensible**: Custom operators, actions, and field state properties
 - 🔍 **Debug-Friendly**: Comprehensive validation and evaluation tracing
 - 📊 **Rich Logic System**: 25+ built-in operators with unlimited nesting
@@ -47,7 +50,7 @@ const ruleSet = {
   field1: [
     {
       condition: { ">": [{ "var": ["age"] }, 18] },
-      action: { setState: { target: "field1.isVisible", value: true } },
+      action: { set: { target: "field1.isVisible", value: true } },
       priority: 1
     }
   ]
@@ -84,10 +87,29 @@ Each field maintains state properties that can be modified by rules:
 
 ```typescript
 interface FieldState {
+  value?: any;           // Field value
   isVisible: boolean;    // Field visibility
   isRequired: boolean;   // Field requirement
   calculatedValue?: any; // Computed values
   // ... extensible via onFieldStateCreation
+}
+```
+
+### Field Initialization
+
+Fields can be initialized with default state and values using `init` actions:
+
+```typescript
+// Context-based field initialization
+{
+  condition: { "==": [{ "var": ["userType"] }, "premium"] },
+  action: {
+    "init": {
+      fieldState: { isVisible: true, theme: "premium" },
+      fieldValue: "default-premium-value"
+    }
+  },
+  priority: 0  // Init actions typically run first
 }
 ```
 
@@ -113,6 +135,9 @@ loadRuleSet(ruleSet: RuleSet): void
 
 // Update field values and trigger re-evaluation
 updateFieldValue(fieldUpdates: Record<string, any>): string[]
+
+// Get current field value
+getFieldValue(fieldName: string): any
 
 // Evaluate specific field and return complete state
 evaluateField(fieldName: string): FieldState
@@ -245,8 +270,7 @@ engine.registerSharedRules({
 // Initialize field state and/or value (processed before other rules)
 { "init": { 
     fieldState: { isVisible: true, currency: "USD" },
-    fieldValue: "default-value",
-    merge: true  // Merge with defaults (default: true)
+    fieldValue: "default-value"
 }}
 
 // Conditional initialization based on context
@@ -257,42 +281,37 @@ engine.registerSharedRules({
       fieldState: { 
         paymentMethods: ["card", "paypal", "crypto"],
         allowSavedCards: true 
-      }
+      },
+      fieldValue: { paymentMethod: "card" }
     }
   },
   priority: 0  // Init rules typically use priority 0 or negative
 }
 ```
 
-### Field Value Actions
+### Field Value and State Actions
 ```typescript
-// Set field value directly
-{ "set": { target: "fieldName", value: "Hello World" } }
+// Set any field property (value or state)
+{ "set": { target: "fieldName.value", value: "Hello World" } }
+{ "set": { target: "fieldName.isVisible", value: true } }
+{ "set": { target: "fieldName.customProperty", value: "custom" } }
 
 // Copy value from another field
-{ "copy": { source: "sourceField", target: "targetField" } }
-```
-
-### Field State Actions
-```typescript
-// Set field state properties
-{ "setState": { target: "field.isVisible", value: true } }
-{ "setState": { target: "field.isRequired", value: false } }
-{ "setState": { target: "field.calculatedValue", value: 42 } }
+{ "copy": { source: "sourceField.value", target: "targetField.value" } }
 ```
 
 ### Calculation Actions
 ```typescript
 // Calculate field values
 { "calculate": { 
-    target: "total",
-    formula: { "+": [{ "var": ["price"] }, { "var": ["tax"] }] }
+    target: "total.value",
+    formula: { "+": [{ "var": ["price.value"] }, { "var": ["tax.value"] }] }
 }}
 
 // Calculate field state properties  
-{ "calculateState": { 
+{ "calculate": { 
     target: "field.calculatedValue",
-    formula: { "+": [{ "var": ["price"] }, { "var": ["tax"] }] }
+    formula: { "+": [{ "var": ["price.value"] }, { "var": ["tax.value"] }] }
 }}
 ```
 
@@ -306,8 +325,8 @@ engine.registerSharedRules({
 ```typescript
 // Execute multiple actions
 { "batch": [
-    { "setState": { target: "field1.isVisible", value: true } },
-    { "calculate": { target: "total", formula: { "+": [1, 2] } } },
+    { "set": { target: "field1.isVisible", value: true } },
+    { "calculate": { target: "total.value", formula: { "+": [1, 2] } } },
     { "trigger": { event: "form_updated" } }
 ]}
 ```
@@ -385,15 +404,15 @@ const engine = new RuleEngine();
 const formRules = {
   "spouseInfo": [
     {
-      condition: { "==": [{ "var": ["maritalStatus"] }, "married"] },
-      action: { "setState": { target: "spouseInfo.isVisible", value: true } },
+      condition: { "==": [{ "var": ["maritalStatus.value"] }, "married"] },
+      action: { "set": { target: "spouseInfo.isVisible", value: true } },
       priority: 1
     }
   ],
   "dependentCount": [
     {
-      condition: { ">": [{ "var": ["children"] }, 0] },
-      action: { "setState": { target: "dependentCount.isVisible", value: true } },
+      condition: { ">": [{ "var": ["children.value"] }, 0] },
+      action: { "set": { target: "dependentCount.isVisible", value: true } },
       priority: 1
     }
   ]
@@ -418,16 +437,16 @@ const calculationRules = {
     {
       condition: true, // Always execute
       action: {
-        "calculateState": {
+        "calculate": {
           target: "totalPrice.calculatedValue",
           formula: {
             "+": [
-              { "*": [{ "var": ["quantity"] }, { "var": ["unitPrice"] }] },
+              { "*": [{ "var": ["quantity.value"] }, { "var": ["unitPrice.value"] }] },
               { "if": [
-                  { ">=": [{ "var": ["quantity"] }, 10] },
+                  { ">=": [{ "var": ["quantity.value"] }, 10] },
                   0,  // No tax for bulk orders
                   { "*": [
-                      { "*": [{ "var": ["quantity"] }, { "var": ["unitPrice"] }] },
+                      { "*": [{ "var": ["quantity.value"] }, { "var": ["unitPrice.value"] }] },
                       0.08
                   ]}
               ]}
@@ -441,7 +460,7 @@ const calculationRules = {
   "submitButton": [
     {
       condition: { ">": [{ "fieldState": ["totalPrice.calculatedValue"] }, 0] },
-      action: { "setState": { target: "submitButton.isVisible", value: true } },
+      action: { "set": { target: "submitButton.isVisible", value: true } },
       priority: 1
     }
   ]
@@ -476,11 +495,11 @@ engine.registerLookupTables([
 const productRules = {
   "productName": [
     {
-      condition: { "!=": [{ "var": ["selectedProductId"] }, ""] },
+      condition: { "!=": [{ "var": ["selectedProductId.value"] }, ""] },
       action: {
-        "calculateState": {
+        "calculate": {
           target: "productName.calculatedValue",
-          formula: { "varTable": "selectedProductId@products.name" }
+          formula: { "varTable": "selectedProductId.value@products.name" }
         }
       },
       priority: 1
@@ -488,8 +507,8 @@ const productRules = {
   ],
   "shippingSection": [
     {
-      condition: { "==": [{ "varTable": "selectedProductId@products.category" }, "electronics"] },
-      action: { "setState": { target: "shippingSection.isVisible", value: true } },
+      condition: { "==": [{ "varTable": "selectedProductId.value@products.category" }, "electronics"] },
+      action: { "set": { target: "shippingSection.isVisible", value: true } },
       priority: 1
     }
   ]
@@ -507,14 +526,14 @@ console.log(engine.evaluateField("shippingSection").isVisible);   // true
 ```typescript
 // Register reusable business logic
 engine.registerSharedRules({
-  "isAdult": { ">=": [{ "var": ["age"] }, 18] },
+  "isAdult": { ">=": [{ "var": ["age.value"] }, 18] },
   "hasValidEmail": { "and": [
-      { "!=": [{ "var": ["email"] }, ""] },
-      { "like": [{ "var": ["email"] }, "*@*.*"] }
+      { "!=": [{ "var": ["email.value"] }, ""] },
+      { "like": [{ "var": ["email.value"] }, "*@*.*"] }
   ]},
   "isEligibleForDiscount": { "and": [
       { "$ref": "isAdult" },
-      { ">": [{ "var": ["membershipYears"] }, 2] }
+      { ">": [{ "var": ["membershipYears.value"] }, 2] }
   ]}
 });
 
@@ -522,15 +541,15 @@ const membershipRules = {
   "discountField": [
     {
       condition: { "$ref": "isEligibleForDiscount" },
-      action: { "setState": { target: "discountField.isVisible", value: true } },
+      action: { "set": { target: "discountField.isVisible", value: true } },
       priority: 1
     },
     {
       condition: { "$ref": "isEligibleForDiscount" },
       action: {
-        "calculateState": {
+        "calculate": {
           target: "discountField.calculatedValue",
-          formula: { "*": [{ "var": ["orderTotal"] }, 0.1] }
+          formula: { "*": [{ "var": ["orderTotal.value"] }, 0.1] }
         }
       },
       priority: 2
@@ -539,7 +558,7 @@ const membershipRules = {
   "emailRequired": [
     {
       condition: { "not": [{ "$ref": "hasValidEmail" }] },
-      action: { "setState": { target: "email.isRequired", value: true } },
+      action: { "set": { target: "email.isRequired", value: true } },
       priority: 1
     }
   ]
@@ -580,17 +599,20 @@ const engine = new RuleEngine({
 // Register custom action
 engine.registerActionHandler('validate', (payload, context) => {
   const { field, rules } = payload;
-  const isValid = validateField(context[field], rules);
+  const fieldValue = engine.getFieldValue(field);
+  const isValid = validateField(fieldValue, rules);
   
   if (!isValid) {
-    engine.getLogicResolver().triggerEvent('validation_error', { field });
+    // Trigger event through the engine's event system
+    const logicResolver = engine.getLogicResolver();
+    logicResolver.resolve({ "trigger": { event: "validation_error", params: { field } } }, context);
   }
 });
 
 const validationRules = {
   "passwordConfirm": [
     {
-      condition: { "!=": [{ "var": ["password"] }, { "var": ["confirmPassword"] }] },
+      condition: { "!=": [{ "var": ["password.value"] }, { "var": ["confirmPassword.value"] }] },
       action: { "trigger": { 
         event: "validation_error", 
         params: { field: "confirmPassword", message: "Passwords do not match" }
@@ -600,7 +622,7 @@ const validationRules = {
   ],
   "emailField": [
     {
-      condition: { "!=": [{ "var": ["email"] }, ""] },
+      condition: { "!=": [{ "var": ["email.value"] }, ""] },
       action: { "validate": { 
         field: "email", 
         rules: ["required", "email_format"] 
@@ -610,8 +632,8 @@ const validationRules = {
   ],
   "submitButton": [
     {
-      condition: { "==": [{ "var": ["password"] }, { "var": ["confirmPassword"] }] },
-      action: { "setState": { target: "submitButton.isVisible", value: true } },
+      condition: { "==": [{ "var": ["password.value"] }, { "var": ["confirmPassword.value"] }] },
+      action: { "set": { target: "submitButton.isVisible", value: true } },
       priority: 1
     }
   ]
@@ -647,8 +669,8 @@ const engine = new RuleEngine({
 const customRules = {
   "adminField": [
     {
-      condition: { "==": [{ "var": ["userRole"] }, "admin"] },
-      action: { "setState": { 
+      condition: { "==": [{ "var": ["userRole.value"] }, "admin"] },
+      action: { "set": { 
         target: "adminField.permissions.write", 
         value: true 
       }},
@@ -688,8 +710,8 @@ logicResolver.registerCustomLogic([
 const customLogicRules = {
   "warningMessage": [
     {
-      condition: { "contains": [{ "var": ["description"] }, "urgent"] },
-      action: { "setState": { target: "warningMessage.isVisible", value: true } },
+      condition: { "contains": [{ "var": ["description.value"] }, "urgent"] },
+      action: { "set": { target: "warningMessage.isVisible", value: true } },
       priority: 1
     }
   ]
@@ -698,9 +720,9 @@ const customLogicRules = {
 
 ### Performance Optimization
 
-```typescript
-// Flywheel automatically optimizes performance through:
+Flywheel automatically optimizes performance through:
 
+```typescript
 // 1. Dependency-based caching
 engine.updateFieldValue({ age: 25 }); // Only age-dependent fields re-evaluate
 
@@ -720,9 +742,6 @@ console.log(engine.getDependenciesOf("calculatedTotal"));
 const dependencies = engine.getDependenciesOf("totalPrice");
 console.log("totalPrice depends on:", dependencies);
 
-const dependents = engine.getDependencyGraph().getDependents("quantity");
-console.log("Fields that depend on quantity:", dependents);
-
 // Validation utilities
 try {
   engine.loadRuleSet(ruleSet);
@@ -731,8 +750,8 @@ try {
 }
 
 // Test rule evaluation
-const testContext = { age: 30, email: "test@example.com" };
-const result = engine.evaluateField("userProfile", testContext);
+engine.updateFieldValue({ age: 30, email: "test@example.com" });
+const result = engine.evaluateField("userProfile");
 expect(result.isVisible).toBe(true);
 ```
 

@@ -16,7 +16,7 @@ import { CacheManager } from './CacheManager';
  * {
  *   "foot_cup_size": [
  *     {
- *       "condition": { "==": [{ "var": "foot_guidance" }, "foot_cup"] },
+ *       "condition": { "==": [{ "var": "foot_guidance.value" }, "foot_cup"] },
  *       "action": { "set": { "target": "foot_cup_size.isVisible", "value": true } },
  *       "priority": 1,
  *       "description": "render this field only when foot_cup is selected."
@@ -26,6 +26,9 @@ import { CacheManager } from './CacheManager';
  * ```
  * in this example, we have defined the rule of the following logic:
  * "if the field value of 'foot_guidance' is equal to 'foot_cup', then set the visibility of the field 'foot_cup_size' to 'true'."
+ *
+ * Note: With the unified field property system, field values are accessed via "fieldName.value" and
+ * field state properties via "fieldName.property" (e.g., "fieldName.isVisible").
  *
  * This example demonstrate the basic structure of a rule object: when the it should be applied (condition), and how it should be applied (action).
  * The "priority" property defines the execution order and by conflict (multiple rules on one field that modify the same sub-property), the rule with lower number wins.
@@ -39,13 +42,34 @@ import { CacheManager } from './CacheManager';
  * Currently, following are built-in action types:
  * ```ts
  * interface ActionTypes {
- *   set: { target: string; value: any };           // Set field properties
+ *   set: { target: string; value: any };           // Set field properties (unified for values and state)
  *   copy: { source: string; target: string };     // Copy between fields
  *   calculate: { target: string; formula: Logic }; // Calculate using formulas
  *   trigger: { event: string; params?: any };      // Fire custom events
  *   batch: Action[];                               // Execute multiple actions
+ *   init: { fieldState?: Record<string, any>; fieldValue?: any }; // Initialize fields
  * }
  * ```
+ *
+ * ## Field Initialization
+ * Fields can be initialized with default state and values using the `init` action type.
+ * Init actions are processed before other rules and allow for context-aware field setup:
+ * 
+ * ```ts
+ * {
+ *   "condition": { "==": [{ "var": "user.role.value" }, "premium"] },
+ *   "action": {
+ *     "init": {
+ *       "fieldState": { "isVisible": true, "theme": "premium" },
+ *       "fieldValue": "default-premium-value"
+ *     }
+ *   },
+ *   "priority": 0  // Init actions typically use priority 0 or negative
+ * }
+ * ```
+ *
+ * The init action requires `context.currentFieldName` to identify the target field,
+ * which is automatically provided during field evaluation.
  *
  * You can listen to the event via:
  * ```ts
@@ -96,14 +120,14 @@ import { CacheManager } from './CacheManager';
  * ```
  *
  * 3. For "updateFieldValue", it:
- *    a) Updates the field value in the internally managed context
- *    b) Re-evaluates all fields depend on this field
+ *    a) Updates the field values in the internally managed context
+ *    b) Re-evaluates all fields that depend on the updated fields
  *    c) Invalidates all corresponding caches.
  * ```ts
  * const invalidatedFieldCaches = engine.updateFieldValue({foot_guidance: "new value"})
  * // Returns: Array of field names whose caches were invalidated.
  *
- * // since this function accept an object, you can also update multiple fields at one time:
+ * // since this function accepts an object, you can also update multiple fields at one time:
  * engine.updateFieldValue({
  *  foot_guidance: "new value",
  *  knee_width: 11
@@ -111,7 +135,7 @@ import { CacheManager } from './CacheManager';
  * ```
  *
  * By instantiating the RuleEngine, you should provide a field state creation function for your field state.
- * By default, only these keys are defined: "isVisible", "isRequired", "calculatedValue".
+ * By default, these keys are defined: "value", "isVisible", "isRequired", "calculatedValue".
  * ```ts
  * function createFieldState(props: Record<string, unknown>) {
  *  return {
@@ -159,11 +183,11 @@ import { CacheManager } from './CacheManager';
  * It's common that front-end fields only save the key value, but by evaluation, the other properties are required, for example,
  * the field "mechanical_joint_ankle" saves only the "id" of a mechanical joint object, but in the rule, you might want:
  * ```json
- * {"var": "mechanical_joint_ankle.isBilateral"}
+ * {"var": "mechanical_joint_ankle.value.isBilateral"}
  * ```
  * you can use the lookup syntax:
  * ```json
- * { "lookup": ["mechanical_joints", { "var": "orthosis_ankle_joint" }, "bilateral"] }
+ * { "lookup": ["mechanical_joints", { "var": "orthosis_ankle_joint.value" }, "bilateral"] }
  * ```
  * and register the table to the engine via:
  * ```ts
@@ -179,7 +203,7 @@ import { CacheManager } from './CacheManager';
  *
  * we also offer the following syntax sugar:
  * ```json
- * {"varTable": "mechanical_joint_ankle@mechanical_joints.bilateral"}
+ * {"varTable": "mechanical_joint_ankle.value@mechanical_joints.bilateral"}
  * ```
  *
  * ## DX
@@ -217,6 +241,20 @@ import { CacheManager } from './CacheManager';
  * //  result: true
  * // }
  * ```
+ *
+ * ## Architecture
+ * 
+ * The RuleEngine is built with a modular architecture consisting of several key components:
+ * 
+ * - **FieldStateManager**: Manages field states, values, and initialization tracking
+ * - **CacheManager**: Handles intelligent caching and cache invalidation
+ * - **DependencyGraph**: Tracks field dependencies and manages evaluation order
+ * - **ActionHandler**: Processes and executes rule actions
+ * - **LogicResolver**: Evaluates rule conditions and formulas
+ * - **LookupManager**: Handles lookup table operations
+ * - **RuleValidator**: Validates rule sets and prevents conflicts
+ *
+ * This separation of concerns provides better maintainability, testability, and performance.
  */
 export interface RuleEngineOptions {
   onEvent?: (eventType: string, params?: any) => void;
