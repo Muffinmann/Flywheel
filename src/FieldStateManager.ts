@@ -1,4 +1,5 @@
 export interface FieldState {
+  value?: any;
   isVisible: boolean;
   isRequired: boolean;
   calculatedValue?: any;
@@ -24,6 +25,7 @@ export class FieldStateManager {
 
   createDefaultFieldState(): FieldState {
     const defaultState: FieldState = {
+      value: undefined,
       isVisible: false,
       isRequired: false,
       calculatedValue: undefined,
@@ -36,12 +38,14 @@ export class FieldStateManager {
     return defaultState;
   }
 
-  getFieldState(fieldName: string): FieldState | undefined {
+  private getFieldState(fieldName: string): FieldState | undefined {
     return this.fieldStates.get(fieldName);
   }
 
-  setFieldState(fieldName: string, fieldState: FieldState): void {
+  private setFieldState(fieldName: string, fieldState: FieldState): void {
     this.fieldStates.set(fieldName, fieldState);
+    // Auto-invalidate cache when field state changes
+    this.invalidateCacheForField(fieldName);
   }
 
   ensureFieldState(fieldName: string): FieldState {
@@ -51,19 +55,53 @@ export class FieldStateManager {
     return this.fieldStates.get(fieldName)!;
   }
 
-  setFieldProperty(target: string, value: any): void {
-    const dotIndex = target.indexOf('.');
+  getFieldProperty(path: string): any {
+    const dotIndex = path.indexOf('.');
     if (dotIndex === -1) {
-      // No dot found, treat as field name only
-      return;
+      throw new Error(`Invalid path format: ${path}. Expected format: "fieldName.property"`);
     }
 
-    const fieldName = target.substring(0, dotIndex);
-    const propertyPath = target.substring(dotIndex + 1);
+    const fieldName = path.substring(0, dotIndex);
+    const propertyPath = path.substring(dotIndex + 1);
+    const fieldState = this.fieldStates.get(fieldName);
+
+    if (!fieldState) {
+      return undefined;
+    }
+
+    // Navigate nested properties
+    return this.getNestedProperty(fieldState, propertyPath);
+  }
+
+  setFieldProperty(path: string, value: any): void {
+    const dotIndex = path.indexOf('.');
+    if (dotIndex === -1) {
+      throw new Error(`Invalid path format: ${path}. Expected format: "fieldName.property"`);
+    }
+
+    const fieldName = path.substring(0, dotIndex);
+    const propertyPath = path.substring(dotIndex + 1);
     const fieldState = this.ensureFieldState(fieldName);
 
     // Handle nested properties (e.g., "permissions.write")
     this.setNestedProperty(fieldState, propertyPath, value);
+    
+    // Auto-invalidate cache when any property changes
+    this.invalidateCacheForField(fieldName);
+  }
+
+  private getNestedProperty(obj: any, path: string): any {
+    const parts = path.split('.');
+    let current = obj;
+
+    for (const part of parts) {
+      if (current === null || current === undefined || !(part in current)) {
+        return undefined;
+      }
+      current = current[part];
+    }
+
+    return current;
   }
 
   private setNestedProperty(obj: any, path: string, value: any): void {
@@ -84,11 +122,15 @@ export class FieldStateManager {
     current[finalPart] = value;
   }
 
-  getCachedEvaluation(fieldName: string): FieldState | undefined {
+  private invalidateCacheForField(fieldName: string): void {
+    this.evaluationCache.delete(fieldName);
+  }
+
+  private getCachedEvaluation(fieldName: string): FieldState | undefined {
     return this.evaluationCache.get(fieldName);
   }
 
-  setCachedEvaluation(fieldName: string, fieldState: FieldState): void {
+  private setCachedEvaluation(fieldName: string, fieldState: FieldState): void {
     this.evaluationCache.set(fieldName, fieldState);
   }
 
@@ -98,24 +140,12 @@ export class FieldStateManager {
     }
   }
 
-  buildEvaluationContext(baseContext: Record<string, any>): Record<string, any> {
+  buildEvaluationContext(): Record<string, any> {
     const context: Record<string, any> = {};
 
-    // Create unified field objects with both value and state properties
-    const allFieldNames = new Set<string>([
-      ...Object.keys(baseContext),
-      ...this.fieldStates.keys(),
-    ]);
-
-    for (const fieldName of allFieldNames) {
-      const fieldValue = baseContext[fieldName];
-      const fieldState = this.fieldStates.get(fieldName) || this.createDefaultFieldState();
-
-      // Create unified field object
-      context[fieldName] = {
-        value: fieldValue,
-        ...fieldState,
-      };
+    // Build context from field states only (values are now part of state)
+    for (const [fieldName, fieldState] of this.fieldStates) {
+      context[fieldName] = { ...fieldState };
     }
 
     return context;
@@ -123,6 +153,26 @@ export class FieldStateManager {
 
   getAllFieldStates(): Map<string, FieldState> {
     return new Map(this.fieldStates);
+  }
+
+  // Check if field has cached evaluation
+  hasCachedEvaluation(fieldName: string): boolean {
+    return this.evaluationCache.has(fieldName);
+  }
+
+  // Get cached evaluation result
+  getCachedFieldState(fieldName: string): FieldState | undefined {
+    return this.getCachedEvaluation(fieldName);
+  }
+
+  // Get current field state (not from cache)
+  getCurrentFieldState(fieldName: string): FieldState | undefined {
+    return this.getFieldState(fieldName);
+  }
+
+  // Cache evaluation result
+  cacheEvaluationResult(fieldName: string, fieldState: FieldState): void {
+    this.setCachedEvaluation(fieldName, fieldState);
   }
 
   clearAll(): void {

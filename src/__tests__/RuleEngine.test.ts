@@ -78,9 +78,9 @@ describe('RuleEngine', () => {
       // Trigger the rule by evaluating the field
       engine.evaluateField('target_field');
 
-      // COPY sets field values in the unified context
-      const context = engine['fieldStateManager'].buildEvaluationContext(engine['context']);
-      expect(context.target_field.value).toBe('copied_value');
+      // COPY sets field values through FieldStateManager
+      const fieldValue = engine.getField('target_field');
+      expect(fieldValue).toBe('copied_value');
     });
 
     test('should handle CALCULATE action with variable reference', () => {

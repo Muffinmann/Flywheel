@@ -241,8 +241,6 @@ export class RuleEngine {
 
   private sharedRules: Record<string, Logic> = {};
 
-  private context: Record<string, any> = {};
-
   constructor(options: RuleEngineOptions = {}) {
     this.logicResolver = new LogicResolver();
 
@@ -261,23 +259,16 @@ export class RuleEngine {
         }
 
         const fieldName = target.substring(0, dotIndex);
-        const propertyPath = target.substring(dotIndex + 1);
-        if (propertyPath === 'value') {
-          // Setting field value
-          this.context[fieldName] = value;
-          const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
-          this.fieldStateManager.invalidateCache(invalidatedFields);
-        } else {
-          // Setting field state property
-          this.fieldStateManager.setFieldProperty(target, value);
-          const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
-          this.fieldStateManager.invalidateCache(invalidatedFields);
-        }
+        
+        // Use unified setFieldProperty for both value and state properties
+        this.fieldStateManager.setFieldProperty(target, value);
+        const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
+        this.fieldStateManager.invalidateCache(invalidatedFields);
       },
       onFieldInit: (fieldName: string, fieldState?: Record<string, any>, fieldValue?: any) => {
         this.fieldStateManager.initializeField(fieldName, fieldState);
         if (fieldValue !== undefined) {
-          this.context[fieldName] = fieldValue;
+          this.fieldStateManager.setFieldProperty(`${fieldName}.value`, fieldValue);
         }
       },
     });
@@ -334,7 +325,7 @@ export class RuleEngine {
 
   updateField(fieldUpdates: Record<string, any>): string[] {
     for (const [fieldName, value] of Object.entries(fieldUpdates)) {
-      this.context[fieldName] = value;
+      this.fieldStateManager.setFieldProperty(`${fieldName}.value`, value);
     }
 
     const invalidatedFields = this.dependencyGraph.getInvalidatedFields(Object.keys(fieldUpdates));
@@ -344,13 +335,13 @@ export class RuleEngine {
   }
 
   getField(fieldName: string): any {
-    return this.context[fieldName];
+    return this.fieldStateManager.getFieldProperty(`${fieldName}.value`);
   }
 
   evaluateField(fieldName: string): FieldState {
-    const cached = this.fieldStateManager.getCachedEvaluation(fieldName);
-    if (cached) {
-      return cached;
+    // Check if we have a cached evaluation
+    if (this.fieldStateManager.hasCachedEvaluation(fieldName)) {
+      return this.fieldStateManager.getCachedFieldState(fieldName)!;
     }
 
     const dependencies = this.dependencyGraph.getDependencies(fieldName);
@@ -408,8 +399,8 @@ export class RuleEngine {
       }
     }
 
-    const finalFieldState = this.fieldStateManager.getFieldState(fieldName)!;
-    this.fieldStateManager.setCachedEvaluation(fieldName, finalFieldState);
+    const finalFieldState = this.fieldStateManager.getCurrentFieldState(fieldName)!;
+    this.fieldStateManager.cacheEvaluationResult(fieldName, finalFieldState);
     return finalFieldState;
   }
 
@@ -418,7 +409,7 @@ export class RuleEngine {
   }
 
   private buildEvaluationContext(): any {
-    return this.fieldStateManager.buildEvaluationContext(this.context);
+    return this.fieldStateManager.buildEvaluationContext();
   }
 
   private resolveSharedRules(logic: Logic): Logic {
