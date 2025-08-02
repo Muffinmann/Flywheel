@@ -13,8 +13,6 @@ export interface FieldStateManagerOptions {
 export class FieldStateManager {
   private fieldStates: Map<string, FieldState> = new Map();
 
-  private evaluationCache: Map<string, FieldState> = new Map();
-
   private initializedFields: Set<string> = new Set();
 
   private options: FieldStateManagerOptions;
@@ -38,16 +36,6 @@ export class FieldStateManager {
     return defaultState;
   }
 
-  private getFieldState(fieldName: string): FieldState | undefined {
-    return this.fieldStates.get(fieldName);
-  }
-
-  private setFieldState(fieldName: string, fieldState: FieldState): void {
-    this.fieldStates.set(fieldName, fieldState);
-    // Auto-invalidate cache when field state changes
-    this.invalidateCacheForField(fieldName);
-  }
-
   ensureFieldState(fieldName: string): FieldState {
     if (!this.fieldStates.has(fieldName)) {
       this.fieldStates.set(fieldName, this.createDefaultFieldState());
@@ -55,6 +43,27 @@ export class FieldStateManager {
     return this.fieldStates.get(fieldName)!;
   }
 
+  /**
+   * Get the complete field state object for a field.
+   * Returns undefined if the field doesn't exist.
+   */
+  getFieldState(fieldName: string): FieldState | undefined {
+    return this.fieldStates.get(fieldName);
+  }
+
+  /**
+   * Set the complete field state object for a field.
+   * Replaces the entire field state.
+   */
+  setFieldState(fieldName: string, fieldState: FieldState): void {
+    this.fieldStates.set(fieldName, fieldState);
+  }
+
+  /**
+   * Get a specific property value from a field using dot notation.
+   * Creates the field with defaults if it doesn't exist.
+   * Example: getFieldProperty('user.value') or getFieldProperty('user.isVisible')
+   */
   getFieldProperty(path: string): any {
     const dotIndex = path.indexOf('.');
     if (dotIndex === -1) {
@@ -63,16 +72,17 @@ export class FieldStateManager {
 
     const fieldName = path.substring(0, dotIndex);
     const propertyPath = path.substring(dotIndex + 1);
-    const fieldState = this.fieldStates.get(fieldName);
-
-    if (!fieldState) {
-      return undefined;
-    }
+    const fieldState = this.ensureFieldState(fieldName);
 
     // Navigate nested properties
     return this.getNestedProperty(fieldState, propertyPath);
   }
 
+  /**
+   * Set a specific property value for a field using dot notation.
+   * Creates the field with defaults if it doesn't exist.
+   * Example: setFieldProperty('user.value', 'John') or setFieldProperty('user.isVisible', true)
+   */
   setFieldProperty(path: string, value: any): void {
     const dotIndex = path.indexOf('.');
     if (dotIndex === -1) {
@@ -85,9 +95,6 @@ export class FieldStateManager {
 
     // Handle nested properties (e.g., "permissions.write")
     this.setNestedProperty(fieldState, propertyPath, value);
-    
-    // Auto-invalidate cache when any property changes
-    this.invalidateCacheForField(fieldName);
   }
 
   private getNestedProperty(obj: any, path: string): any {
@@ -122,62 +129,14 @@ export class FieldStateManager {
     current[finalPart] = value;
   }
 
-  private invalidateCacheForField(fieldName: string): void {
-    this.evaluationCache.delete(fieldName);
-  }
-
-  private getCachedEvaluation(fieldName: string): FieldState | undefined {
-    return this.evaluationCache.get(fieldName);
-  }
-
-  private setCachedEvaluation(fieldName: string, fieldState: FieldState): void {
-    this.evaluationCache.set(fieldName, fieldState);
-  }
-
-  invalidateCache(fieldNames: string[]): void {
-    for (const fieldName of fieldNames) {
-      this.evaluationCache.delete(fieldName);
-    }
-  }
-
   buildEvaluationContext(): Record<string, any> {
-    const context: Record<string, any> = {};
-
-    // Build context from field states only (values are now part of state)
-    for (const [fieldName, fieldState] of this.fieldStates) {
-      context[fieldName] = { ...fieldState };
-    }
-
-    return context;
-  }
-
-  getAllFieldStates(): Map<string, FieldState> {
-    return new Map(this.fieldStates);
-  }
-
-  // Check if field has cached evaluation
-  hasCachedEvaluation(fieldName: string): boolean {
-    return this.evaluationCache.has(fieldName);
-  }
-
-  // Get cached evaluation result
-  getCachedFieldState(fieldName: string): FieldState | undefined {
-    return this.getCachedEvaluation(fieldName);
-  }
-
-  // Get current field state (not from cache)
-  getCurrentFieldState(fieldName: string): FieldState | undefined {
-    return this.getFieldState(fieldName);
-  }
-
-  // Cache evaluation result
-  cacheEvaluationResult(fieldName: string, fieldState: FieldState): void {
-    this.setCachedEvaluation(fieldName, fieldState);
+    return Object.fromEntries(
+      Object.entries(this.fieldStates)
+    )
   }
 
   clearAll(): void {
     this.fieldStates.clear();
-    this.evaluationCache.clear();
     this.initializedFields.clear();
   }
 

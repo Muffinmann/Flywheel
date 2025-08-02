@@ -24,3 +24,6 @@ export {
 export {
   FieldState,
 } from './FieldStateManager.js'
+export {
+  CacheManager,
+} from './CacheManager.js'

@@ -5,6 +5,7 @@ import { FieldStateManager, FieldState } from './FieldStateManager';
 import { RuleValidator } from './RuleValidator';
 import { LookupManager } from './LookupManager';
 import { DefaultDependencyVisitor } from './DefaultDependencyVisitor';
+import { CacheManager } from './CacheManager';
 
 
 /**
@@ -233,6 +234,8 @@ export class RuleEngine {
 
   private fieldStateManager: FieldStateManager;
 
+  private cacheManager: CacheManager;
+
   private ruleValidator: RuleValidator;
 
   private lookupManager: LookupManager;
@@ -249,6 +252,8 @@ export class RuleEngine {
       onFieldStateCreation: options.onFieldStateCreation,
     });
 
+    this.cacheManager = new CacheManager();
+
     this.actionHandler = new ActionHandler(this.logicResolver, {
       onEvent: options.onEvent,
       onFieldPropertySet: (target: string, value: any) => {
@@ -263,7 +268,7 @@ export class RuleEngine {
         // Use unified setFieldProperty for both value and state properties
         this.fieldStateManager.setFieldProperty(target, value);
         const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
-        this.fieldStateManager.invalidateCache(invalidatedFields);
+        this.cacheManager.invalidate(invalidatedFields);
       },
       onFieldInit: (fieldName: string, fieldState?: Record<string, any>, fieldValue?: any) => {
         this.fieldStateManager.initializeField(fieldName, fieldState);
@@ -329,7 +334,7 @@ export class RuleEngine {
     }
 
     const invalidatedFields = this.dependencyGraph.getInvalidatedFields(Object.keys(fieldUpdates));
-    this.fieldStateManager.invalidateCache(invalidatedFields);
+    this.cacheManager.invalidate(invalidatedFields);
 
     return invalidatedFields;
   }
@@ -339,9 +344,9 @@ export class RuleEngine {
   }
 
   evaluateField(fieldName: string): FieldState {
-    // Check if we have a cached evaluation
-    if (this.fieldStateManager.hasCachedEvaluation(fieldName)) {
-      return this.fieldStateManager.getCachedFieldState(fieldName)!;
+    // Check if we have a valid cached evaluation
+    if (this.cacheManager.isValid(fieldName)) {
+      return this.fieldStateManager.getFieldState(fieldName)!;
     }
 
     const dependencies = this.dependencyGraph.getDependencies(fieldName);
@@ -399,8 +404,8 @@ export class RuleEngine {
       }
     }
 
-    const finalFieldState = this.fieldStateManager.getCurrentFieldState(fieldName)!;
-    this.fieldStateManager.cacheEvaluationResult(fieldName, finalFieldState);
+    const finalFieldState = this.fieldStateManager.getFieldState(fieldName)!;
+    this.cacheManager.markAsValid(fieldName);
     return finalFieldState;
   }
 
