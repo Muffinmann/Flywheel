@@ -346,8 +346,11 @@ describe('RuleEngine Integration', () => {
     test('should integrate custom action handlers', () => {
       const logs: string[] = [];
 
-      engine.registerActionHandler('log', (payload) => {
-        logs.push(payload.message);
+      engine.registerActionHandler({
+        actionType: 'log',
+        handler: (payload) => {
+          logs.push(payload.message);
+        }
       });
 
       const ruleSet: RuleSet = {

@@ -384,12 +384,18 @@ describe('RuleEngine - Init Action', () => {
       const customEngine = new RuleEngine();
 
       // Track action executions
-      customEngine.registerActionHandler('trackInit', () => {
-        initCount++;
+      customEngine.registerActionHandler({
+        actionType: 'trackInit',
+        handler: () => {
+          initCount++;
+        }
       });
 
-      customEngine.registerActionHandler('trackRegular', () => {
-        regularCount++;
+      customEngine.registerActionHandler({
+        actionType: 'trackRegular',
+        handler: () => {
+          regularCount++;
+        }
       });
 
       // Separate init and regular rules to avoid context issues

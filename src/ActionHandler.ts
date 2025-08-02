@@ -75,8 +75,17 @@ export class ActionHandler {
     });
   }
 
-  registerActionHandler(actionType: string, handler: (payload: any, context: any) => void): void {
-    this.actionHandlers.set(actionType, handler);
+  registerActionHandler(actionType: string, handler: (payload: any, context: any, helpers?: ActionHandlerOptions) => void): void {
+    // Check if handler expects the helpers parameter by checking its length
+    if (handler.length >= 3) {
+      // Handler expects helpers, wrap it to pass the options
+      this.actionHandlers.set(actionType, (payload, context) => {
+        handler(payload, context, this.options);
+      });
+    } else {
+      // Handler doesn't expect helpers, use it directly for backward compatibility
+      this.actionHandlers.set(actionType, handler as any);
+    }
   }
 
   executeAction(action: Action, context: any): void {

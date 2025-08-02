@@ -232,8 +232,11 @@ describe('Edge Cases and Error Handling', () => {
     });
 
     test('should handle actions that throw errors', () => {
-      engine.registerActionHandler('error_action', () => {
-        throw new Error('Custom action error');
+      engine.registerActionHandler({
+        actionType: 'error_action',
+        handler: () => {
+          throw new Error('Custom action error');
+        }
       });
 
       const ruleSet: RuleSet = {

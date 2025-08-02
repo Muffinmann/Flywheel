@@ -1,12 +1,12 @@
-import { DefaultDependencyVisitor } from '../DefaultDependencyVisitor.js';
+import { DependencyVisitor } from '../DependencyVisitor.js';
 import { Logic } from '../LogicResolver.js';
 import { Action } from '../ActionHandler.js';
 
-describe('DefaultDependencyVisitor', () => {
-  let visitor: DefaultDependencyVisitor;
+describe('DependencyVisitor', () => {
+  let visitor: DependencyVisitor;
 
   beforeEach(() => {
-    visitor = new DefaultDependencyVisitor();
+    visitor = new DependencyVisitor();
   });
 
   describe('visitLogic', () => {
@@ -47,7 +47,7 @@ describe('DefaultDependencyVisitor', () => {
         const sharedRules = {
           is_admin: { '==': [{ var: ['user_role'] }, 'admin'] }
         };
-        visitor = new DefaultDependencyVisitor(sharedRules);
+        visitor = new DependencyVisitor(sharedRules);
 
         const logic: Logic = { '$ref': 'is_admin' };
         const dependencies = visitor.visitLogic(logic);
@@ -64,7 +64,7 @@ describe('DefaultDependencyVisitor', () => {
             ]
           }
         };
-        visitor = new DefaultDependencyVisitor(sharedRules);
+        visitor = new DependencyVisitor(sharedRules);
 
         const logic: Logic = { '$ref': 'has_permission' };
         const dependencies = visitor.visitLogic(logic);
@@ -82,7 +82,7 @@ describe('DefaultDependencyVisitor', () => {
         const sharedRules = {
           test_rule: { var: ['test_field'] }
         };
-        visitor = new DefaultDependencyVisitor(sharedRules);
+        visitor = new DependencyVisitor(sharedRules);
 
         const logic: Logic = { '$ref': ['test_rule'] };
         const dependencies = visitor.visitLogic(logic);
@@ -385,7 +385,7 @@ describe('DefaultDependencyVisitor', () => {
       const initialRules = {
         rule1: { var: ['field_a'] }
       };
-      visitor = new DefaultDependencyVisitor(initialRules);
+      visitor = new DependencyVisitor(initialRules);
 
       // Test initial rule
       let logic: Logic = { '$ref': 'rule1' };
@@ -414,7 +414,7 @@ describe('DefaultDependencyVisitor', () => {
       const initialRules = {
         rule1: { var: ['field_a'] }
       };
-      visitor = new DefaultDependencyVisitor(initialRules);
+      visitor = new DependencyVisitor(initialRules);
 
       const additionalRules = {
         rule2: { var: ['field_b'] }
@@ -449,7 +449,7 @@ describe('DefaultDependencyVisitor', () => {
         rule1: { '$ref': 'rule2' },
         rule2: { '$ref': 'rule1' }
       };
-      visitor = new DefaultDependencyVisitor(circularRules);
+      visitor = new DependencyVisitor(circularRules);
 
       // This should not cause infinite recursion
       const logic: Logic = { '$ref': 'rule1' };

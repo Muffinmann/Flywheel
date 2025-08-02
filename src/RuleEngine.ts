@@ -1,10 +1,10 @@
 import { Logic, LogicResolver } from './LogicResolver';
-import { ActionHandler, Action } from './ActionHandler';
+import { ActionHandler, Action, ActionHandlerOptions } from './ActionHandler';
 import { DependencyGraph, RuleSet } from './DependencyGraph';
 import { FieldStateManager, FieldState } from './FieldStateManager';
 import { RuleValidator } from './RuleValidator';
 import { LookupManager } from './LookupManager';
-import { DefaultDependencyVisitor } from './DefaultDependencyVisitor';
+import { DependencyVisitor, CustomLogicDependencyVisitor, CustomActionDependencyVisitor } from './DependencyVisitor';
 import { CacheManager } from './CacheManager';
 
 
@@ -268,7 +268,7 @@ export class RuleEngine {
 
   private dependencyGraph: DependencyGraph;
 
-  private dependencyVisitor: DefaultDependencyVisitor;
+  private dependencyVisitor: DependencyVisitor;
 
   private fieldStateManager: FieldStateManager;
 
@@ -316,7 +316,7 @@ export class RuleEngine {
       },
     });
 
-    this.dependencyVisitor = new DefaultDependencyVisitor(this.sharedRules);
+    this.dependencyVisitor = new DependencyVisitor(this.sharedRules);
     this.dependencyGraph = new DependencyGraph(this.dependencyVisitor);
     this.ruleValidator = new RuleValidator(this.extractActionTargets.bind(this));
     this.lookupManager = new LookupManager(this.logicResolver);
@@ -341,8 +341,34 @@ export class RuleEngine {
     this.lookupManager.registerLookupTables(tables);
   }
 
-  registerActionHandler(actionType: string, handler: (payload: any, context: any) => void): void {
-    this.actionHandler.registerActionHandler(actionType, handler);
+  registerActionHandler(params: {
+    actionType: string;
+    handler: (payload: any, context: any, helpers?: ActionHandlerOptions) => void;
+    dependencyVisitor?: CustomActionDependencyVisitor;
+  }): void {
+    this.actionHandler.registerActionHandler(params.actionType, params.handler);
+    
+    // Register the dependency visitor if provided
+    if (params.dependencyVisitor) {
+      this.dependencyVisitor.registerActionVisitor(params.actionType, params.dependencyVisitor);
+    }
+  }
+  
+  registerCustomLogic(params: {
+    operator: string;
+    handler: (args: any[], context: any) => any;
+    dependencyVisitor?: CustomLogicDependencyVisitor;
+  }): void {
+    // Register with LogicResolver for execution
+    this.logicResolver.registerCustomLogic([{
+      operator: params.operator,
+      operand: params.handler
+    }]);
+    
+    // Register the dependency visitor if provided
+    if (params.dependencyVisitor) {
+      this.dependencyVisitor.registerLogicVisitor(params.operator, params.dependencyVisitor);
+    }
   }
 
   private extractActionTargets(action: Action): string[] {

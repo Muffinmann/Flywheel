@@ -109,9 +109,12 @@ describe('RuleEngine Orchestration', () => {
         }
       });
 
-      engine.registerActionHandler('track', (payload, context) => {
-        // Simplified tracking - just add to evaluation order
-        evaluationOrder.push(payload.fieldName);
+      engine.registerActionHandler({
+        actionType: 'track',
+        handler: (payload, context) => {
+          // Simplified tracking - just add to evaluation order
+          evaluationOrder.push(payload.fieldName);
+        }
       });
 
       const ruleSet: RuleSet = {
@@ -140,8 +143,11 @@ describe('RuleEngine Orchestration', () => {
     test('should orchestrate rule priority execution', () => {
       const executionOrder: number[] = [];
 
-      engine.registerActionHandler('track_priority', (payload) => {
-        executionOrder.push(payload.priority);
+      engine.registerActionHandler({
+        actionType: 'track_priority',
+        handler: (payload) => {
+          executionOrder.push(payload.priority);
+        }
       });
 
       const ruleSet: RuleSet = {
@@ -301,8 +307,11 @@ describe('RuleEngine Orchestration', () => {
     test('should orchestrate caching across evaluations', () => {
       let evaluationCount = 0;
 
-      engine.registerActionHandler('count_evaluation', () => {
-        evaluationCount++;
+      engine.registerActionHandler({
+        actionType: 'count_evaluation',
+        handler: () => {
+          evaluationCount++;
+        }
       });
 
       const ruleSet: RuleSet = {

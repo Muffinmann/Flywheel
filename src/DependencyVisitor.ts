@@ -1,12 +1,32 @@
 import { Logic } from './LogicResolver.js';
 import { Action } from './ActionHandler.js';
-import { DependencyVisitor, DependencyInfo } from './DependencyGraph.js';
+import { DependencyVisitor as IDependencyVisitor, DependencyInfo } from './DependencyGraph.js';
+
+/**
+ * Interface for custom logic dependency visitors
+ */
+export interface CustomLogicDependencyVisitor {
+  visitLogic(params: {
+    operator: string;
+    operands: any;
+  }): DependencyInfo;
+}
+
+/**
+ * Interface for custom action dependency visitors
+ */
+export interface CustomActionDependencyVisitor {
+  visitAction(params: {
+    actionType: string;
+    payload: any;
+  }): DependencyInfo;
+}
 
 /**
  * Strategy interface for handling specific operators in dependency extraction
  */
 interface OperatorHandler {
-  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): DependencyInfo;
+  handle(operands: any, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo;
 }
 
 /**
@@ -77,7 +97,7 @@ class VarOperatorHandler implements OperatorHandler {
  * Handler for '$ref' operator - resolves shared rule references
  */
 class RefOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): DependencyInfo {
+  handle(operands: any, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
     const refName = Array.isArray(operands) ? operands[0] : operands;
     if (visitor.getSharedRule(refName) && !visited.has(refName)) {
       visited.add(refName);
@@ -93,7 +113,7 @@ class RefOperatorHandler implements OperatorHandler {
  * Handler for 'lookup' operator - extracts dependencies from lookup key expressions
  */
 class LookupOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): DependencyInfo {
+  handle(operands: any, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
     const lookupOperands = DependencyUtils.normalizeToArray(operands);
     if (lookupOperands.length > 1) {
       return visitor.visitLogicInternal(lookupOperands[1], visited);
@@ -126,7 +146,7 @@ class VarTableOperatorHandler implements OperatorHandler {
  * Default handler for all other operators - recursively processes operands
  */
 class DefaultOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DefaultDependencyVisitor, visited: Set<string>): DependencyInfo {
+  handle(operands: any, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
     const operandArray = DependencyUtils.normalizeToArray(operands);
     const dependencies: string[] = [];
     const dependents: string[] = [];
@@ -140,10 +160,14 @@ class DefaultOperatorHandler implements OperatorHandler {
   }
 }
 
-export class DefaultDependencyVisitor implements DependencyVisitor {
+export class DependencyVisitor implements IDependencyVisitor {
   private sharedRules: Record<string, Logic> = {};
 
   private operatorHandlers: Map<string, OperatorHandler> = new Map();
+
+  private customLogicVisitors: Map<string, CustomLogicDependencyVisitor> = new Map();
+
+  private customActionVisitors: Map<string, CustomActionDependencyVisitor> = new Map();
 
   constructor(sharedRules: Record<string, Logic> = {}) {
     this.sharedRules = sharedRules;
@@ -178,6 +202,20 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
     this.sharedRules = { ...this.sharedRules, ...sharedRules };
   }
 
+  /**
+   * Register a custom logic dependency visitor
+   */
+  registerLogicVisitor(operator: string, visitor: CustomLogicDependencyVisitor): void {
+    this.customLogicVisitors.set(operator, visitor);
+  }
+
+  /**
+   * Register a custom action dependency visitor
+   */
+  registerActionVisitor(actionType: string, visitor: CustomActionDependencyVisitor): void {
+    this.customActionVisitors.set(actionType, visitor);
+  }
+
   visitLogic(logic: Logic): DependencyInfo {
     return this.visitLogicInternal(logic, new Set());
   }
@@ -207,10 +245,19 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
 
     // Handle logic objects with operators
     for (const [operator, operands] of Object.entries(logic)) {
-      const handler = this.getOperatorHandler(operator);
-      const info = handler.handle(operands, this, visited);
-      dependencies.push(...info.dependencies);
-      dependents.push(...info.dependents);
+      // Check for custom logic visitor first
+      const customVisitor = this.customLogicVisitors.get(operator);
+      if (customVisitor) {
+        const info = customVisitor.visitLogic({ operator, operands });
+        dependencies.push(...info.dependencies);
+        dependents.push(...info.dependents);
+      } else {
+        // Fall back to built-in handlers
+        const handler = this.getOperatorHandler(operator);
+        const info = handler.handle(operands, this, visited);
+        dependencies.push(...info.dependencies);
+        dependents.push(...info.dependents);
+      }
     }
 
     return { dependencies: this.deduplicate(dependencies), dependents: this.deduplicate(dependents) };
@@ -220,6 +267,13 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
     const actionType = Object.keys(action)[0];
     const payload = (action as any)[actionType];
 
+    // Check for custom action visitor first
+    const customVisitor = this.customActionVisitors.get(actionType);
+    if (customVisitor) {
+      return customVisitor.visitAction({ actionType, payload });
+    }
+
+    // Fall back to built-in action handlers
     switch (actionType) {
       case 'set': {
         const targetField = DependencyUtils.extractFieldName(payload.target);
