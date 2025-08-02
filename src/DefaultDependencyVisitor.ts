@@ -182,6 +182,10 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
     return this.visitLogicInternal(logic, new Set());
   }
 
+  deduplicate(deps: string[]) {
+    return Array.from(new Set(deps))
+  }
+
   visitLogicInternal(logic: Logic, visited: Set<string>): DependencyInfo {
     const dependencies: string[] = [];
     const dependents: string[] = [];
@@ -198,7 +202,7 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
         dependencies.push(...info.dependencies);
         dependents.push(...info.dependents);
       }
-      return { dependencies, dependents };
+      return { dependencies: this.deduplicate(dependencies), dependents: this.deduplicate(dependents) };
     }
 
     // Handle logic objects with operators
@@ -209,7 +213,7 @@ export class DefaultDependencyVisitor implements DependencyVisitor {
       dependents.push(...info.dependents);
     }
 
-    return { dependencies, dependents };
+    return { dependencies: this.deduplicate(dependencies), dependents: this.deduplicate(dependents) };
   }
 
   visitAction(action: Action): DependencyInfo {

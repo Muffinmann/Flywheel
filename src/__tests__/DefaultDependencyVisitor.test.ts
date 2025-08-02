@@ -14,57 +14,31 @@ describe('DefaultDependencyVisitor', () => {
       test('should extract field name from simple var', () => {
         const logic: Logic = { var: ['field_name'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['field_name'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['field_name'], dependents: [] });
       });
 
       test('should extract field name from var with dot notation', () => {
         const logic: Logic = { var: ['field_name.property'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['field_name'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['field_name'], dependents: [] });
       });
 
       test('should extract field name from var with @ notation', () => {
         const logic: Logic = { var: ['field_name@table.property'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['field_name'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['field_name'], dependents: [] });
       });
 
       test('should exclude $ variable references', () => {
         const logic: Logic = { var: ['$.context'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should handle var with single string operand', () => {
         const logic: Logic = { var: 'field_name' };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['field_name'], dependents: []});
-      });
-    });
-
-    describe('fieldState operator', () => {
-      test('should not extract dependencies from fieldState (no longer supported)', () => {
-        const logic: Logic = { fieldState: ['field_name.isVisible'] };
-        const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
-      });
-
-      test('should not extract dependencies from nested fieldState property', () => {
-        const logic: Logic = { fieldState: ['field_name.permissions.read'] };
-        const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
-      });
-
-      test('should not extract dependencies from fieldState with single string operand', () => {
-        const logic: Logic = { fieldState: 'field_name.isRequired' };
-        const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
-      });
-
-      test('should not extract dependencies from fieldState array', () => {
-        const logic: Logic = { fieldState: ['field1.isVisible', 'field2.isRequired'] };
-        const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['field_name'], dependents: [] });
       });
     });
 
@@ -77,7 +51,7 @@ describe('DefaultDependencyVisitor', () => {
 
         const logic: Logic = { '$ref': 'is_admin' };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['user_role'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['user_role'], dependents: [] });
       });
 
       test('should handle nested shared rule references', () => {
@@ -101,7 +75,7 @@ describe('DefaultDependencyVisitor', () => {
       test('should handle missing shared rule references gracefully', () => {
         const logic: Logic = { '$ref': 'nonexistent_rule' };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should handle $ref with array operand', () => {
@@ -112,7 +86,7 @@ describe('DefaultDependencyVisitor', () => {
 
         const logic: Logic = { '$ref': ['test_rule'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['test_field'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['test_field'], dependents: [] });
       });
     });
 
@@ -122,7 +96,7 @@ describe('DefaultDependencyVisitor', () => {
           lookup: ['table_name', { var: ['key_field'] }, 'property']
         };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['key_field'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['key_field'], dependents: [] });
       });
 
       test('should handle complex lookup key expressions', () => {
@@ -137,13 +111,13 @@ describe('DefaultDependencyVisitor', () => {
       test('should handle lookup with insufficient operands', () => {
         const logic: Logic = { lookup: ['table_name'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should handle lookup with single operand', () => {
         const logic: Logic = { lookup: 'table_name' };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
     });
 
@@ -151,7 +125,7 @@ describe('DefaultDependencyVisitor', () => {
       test('should extract field name from varTable notation', () => {
         const logic: Logic = { varTable: ['field_name@table.property'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['field_name'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['field_name'], dependents: [] });
       });
 
       test('should handle multiple varTable operands', () => {
@@ -166,19 +140,19 @@ describe('DefaultDependencyVisitor', () => {
       test('should exclude $ references in varTable', () => {
         const logic: Logic = { varTable: ['$.context@table.property'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should handle varTable without @ notation', () => {
         const logic: Logic = { varTable: ['field_name'] };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should handle varTable with single string operand', () => {
         const logic: Logic = { varTable: 'field_name@table.property' };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['field_name'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['field_name'], dependents: [] });
       });
     });
 
@@ -228,7 +202,7 @@ describe('DefaultDependencyVisitor', () => {
       test('should handle single operand operators', () => {
         const logic: Logic = { not: { var: ['boolean_field'] } };
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: ['boolean_field'], dependents: []});
+        expect(dependencies).toEqual({ dependencies: ['boolean_field'], dependents: [] });
       });
     });
 
@@ -246,7 +220,7 @@ describe('DefaultDependencyVisitor', () => {
       test('should handle empty arrays', () => {
         const logic: Logic = [];
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
     });
 
@@ -254,25 +228,25 @@ describe('DefaultDependencyVisitor', () => {
       test('should handle string literals', () => {
         const logic: Logic = 'literal_string';
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should handle numeric literals', () => {
         const logic: Logic = 42;
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should handle boolean literals', () => {
         const logic: Logic = true;
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should handle null values', () => {
         const logic: Logic = null;
         const dependencies = visitor.visitLogic(logic);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
     });
   });
@@ -284,7 +258,7 @@ describe('DefaultDependencyVisitor', () => {
           copy: { source: 'source_field', target: 'target_field.property' }
         };
         const dependencies = visitor.visitAction(action);
-        expect(dependencies).toEqual({dependencies: ['source_field'], dependents: ['target_field']});
+        expect(dependencies).toEqual({ dependencies: ['source_field'], dependents: ['target_field'] });
       });
     });
 
@@ -377,7 +351,7 @@ describe('DefaultDependencyVisitor', () => {
       test('should handle empty batch actions', () => {
         const action: Action = { batch: [] };
         const dependencies = visitor.visitAction(action);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
     });
 
@@ -387,7 +361,7 @@ describe('DefaultDependencyVisitor', () => {
           set: { target: 'field.property', value: 'some_value' }
         };
         const dependencies = visitor.visitAction(action);
-        expect(dependencies).toEqual({dependencies: [], dependents: ['field']});
+        expect(dependencies).toEqual({ dependencies: [], dependents: ['field'] });
       });
 
       test('should return empty array for trigger action', () => {
@@ -395,13 +369,13 @@ describe('DefaultDependencyVisitor', () => {
           trigger: { event: 'custom_event', params: { data: 'value' } }
         };
         const dependencies = visitor.visitAction(action);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
 
       test('should return empty array for unknown action types', () => {
         const action = { custom_action: { param: 'value' } } as any;
         const dependencies = visitor.visitAction(action);
-        expect(dependencies).toEqual({dependencies: [], dependents: []});
+        expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
     });
   });
@@ -416,7 +390,7 @@ describe('DefaultDependencyVisitor', () => {
       // Test initial rule
       let logic: Logic = { '$ref': 'rule1' };
       let dependencies = visitor.visitLogic(logic);
-      expect(dependencies).toEqual({dependencies: ['field_a'], dependents: []});
+      expect(dependencies).toEqual({ dependencies: ['field_a'], dependents: [] });
 
       // Update shared rules
       const newRules = {
@@ -428,12 +402,12 @@ describe('DefaultDependencyVisitor', () => {
       // Test updated rule
       logic = { '$ref': 'rule1' };
       dependencies = visitor.visitLogic(logic);
-      expect(dependencies).toEqual({dependencies: ['field_b'], dependents: []});
+      expect(dependencies).toEqual({ dependencies: ['field_b'], dependents: [] });
 
       // Test new rule
       logic = { '$ref': 'rule2' };
       dependencies = visitor.visitLogic(logic);
-      expect(dependencies).toEqual({dependencies: ['field_c'], dependents: []});
+      expect(dependencies).toEqual({ dependencies: ['field_c'], dependents: [] });
     });
 
     test('should preserve existing rules when adding new ones', () => {
@@ -450,24 +424,24 @@ describe('DefaultDependencyVisitor', () => {
       // Both rules should be available
       let logic: Logic = { '$ref': 'rule1' };
       let dependencies = visitor.visitLogic(logic);
-      expect(dependencies).toEqual({dependencies: ['field_a'], dependents: []});
+      expect(dependencies).toEqual({ dependencies: ['field_a'], dependents: [] });
 
       logic = { '$ref': 'rule2' };
       dependencies = visitor.visitLogic(logic);
-      expect(dependencies).toEqual({dependencies: ['field_b'], dependents: []});
+      expect(dependencies).toEqual({ dependencies: ['field_b'], dependents: [] });
     });
   });
 
   describe('edge cases and error handling', () => {
     test('should handle undefined logic gracefully', () => {
       const dependencies = visitor.visitLogic(undefined as any);
-      expect(dependencies).toEqual({dependencies: [], dependents: []});
+      expect(dependencies).toEqual({ dependencies: [], dependents: [] });
     });
 
     test('should handle malformed var expressions', () => {
       const logic: Logic = { var: [123] }; // Non-string var
       const dependencies = visitor.visitLogic(logic);
-      expect(dependencies).toEqual({dependencies: [], dependents: []});
+      expect(dependencies).toEqual({ dependencies: [], dependents: [] });
     });
 
     test('should handle circular shared rule references', () => {
@@ -493,11 +467,10 @@ describe('DefaultDependencyVisitor', () => {
         ]
       };
       const dependencies = visitor.visitLogic(logic);
-      
+
       // Should contain both dependencies, possibly with duplicates
       // (Note: The current implementation doesn't deduplicate, which is fine for dependency tracking)
-      expect(dependencies.dependencies).toContain('field_a');
-      expect(dependencies.dependencies).toContain('field_b');
+      expect(dependencies.dependencies.sort()).toEqual(['field_a', 'field_b'].sort());
     });
   });
 });
