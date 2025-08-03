@@ -43,7 +43,7 @@ describe('RuleManagement', () => {
       const idPathMap = {
         'prod-001': 'path1',
         'prod-002': 'path2',
-        'prod-003': 'path3'
+        'prod-003': 'path3',
       };
 
       expect(() => {
@@ -57,7 +57,7 @@ describe('RuleManagement', () => {
       // Since JS objects can't have duplicate keys, let's test the validation logic differently
       const mockIdPathMap = new Map([
         ['prod-001', 'path1'],
-        ['prod-002', 'path2']
+        ['prod-002', 'path2'],
       ]);
 
       // Simulate adding a duplicate
@@ -83,33 +83,39 @@ describe('RuleManagement', () => {
     test('should merge child rules with parent rules', () => {
       const parent: CompiledRuleSet = {
         fields: {
-          field1: [{
-            condition: { '==': [1, 1] },
-            action: { set: { target: 'field1.isVisible', value: true } },
-            priority: 1
-          }]
+          field1: [
+            {
+              condition: { '==': [1, 1] },
+              action: { set: { target: 'field1.isVisible', value: true } },
+              priority: 1,
+            },
+          ],
         },
         sharedRules: {
-          shared1: { '==': [{ var: ['x'] }, 'value'] }
-        }
+          shared1: { '==': [{ var: ['x'] }, 'value'] },
+        },
       };
 
       const child: RuleFile = {
         fields: {
-          field1: [{
-            condition: { '==': [2, 2] },
-            action: { set: { target: 'field1.isRequired', value: true } },
-            priority: 2
-          }],
-          field2: [{
-            condition: { '==': [3, 3] },
-            action: { set: { target: 'field2.isVisible', value: true } },
-            priority: 1
-          }]
+          field1: [
+            {
+              condition: { '==': [2, 2] },
+              action: { set: { target: 'field1.isRequired', value: true } },
+              priority: 2,
+            },
+          ],
+          field2: [
+            {
+              condition: { '==': [3, 3] },
+              action: { set: { target: 'field2.isVisible', value: true } },
+              priority: 1,
+            },
+          ],
         },
         sharedRules: {
-          shared2: { '==': [{ var: ['y'] }, 'value'] }
-        }
+          shared2: { '==': [{ var: ['y'] }, 'value'] },
+        },
       };
 
       const result = RuleManagement.mergeRuleSets(parent, child);
@@ -123,15 +129,17 @@ describe('RuleManagement', () => {
     test('should handle merging with null parent', () => {
       const child: RuleFile = {
         fields: {
-          field1: [{
-            condition: { '==': [1, 1] },
-            action: { set: { target: 'field1.isVisible', value: true } },
-            priority: 1
-          }]
+          field1: [
+            {
+              condition: { '==': [1, 1] },
+              action: { set: { target: 'field1.isVisible', value: true } },
+              priority: 1,
+            },
+          ],
         },
         sharedRules: {
-          shared1: { '==': [{ var: ['x'] }, 'value'] }
-        }
+          shared1: { '==': [{ var: ['x'] }, 'value'] },
+        },
       };
 
       const result = RuleManagement.mergeRuleSets(null, child);
@@ -143,15 +151,17 @@ describe('RuleManagement', () => {
     test('should handle empty child rule file', () => {
       const parent: CompiledRuleSet = {
         fields: {
-          field1: [{
-            condition: { '==': [1, 1] },
-            action: { set: { target: 'field1.isVisible', value: true } },
-            priority: 1
-          }]
+          field1: [
+            {
+              condition: { '==': [1, 1] },
+              action: { set: { target: 'field1.isVisible', value: true } },
+              priority: 1,
+            },
+          ],
         },
         sharedRules: {
-          shared1: { '==': [{ var: ['x'] }, 'value'] }
-        }
+          shared1: { '==': [{ var: ['x'] }, 'value'] },
+        },
       };
 
       const child: RuleFile = {};
@@ -170,19 +180,19 @@ describe('RuleManagement', () => {
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'field1.prop1', value: 'third' } },
-            priority: 3
+            priority: 3,
           },
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'field1.prop2', value: 'first' } },
-            priority: 1
+            priority: 1,
           },
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'field1.prop3', value: 'second' } },
-            priority: 2
-          }
-        ]
+            priority: 2,
+          },
+        ],
       };
 
       const sorted = RuleManagement.sortRulesByPriority(ruleSet);
@@ -198,14 +208,14 @@ describe('RuleManagement', () => {
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'field1.prop1', value: 'value' } },
-            priority: 3
+            priority: 3,
           },
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'field1.prop2', value: 'value' } },
-            priority: 1
-          }
-        ]
+            priority: 1,
+          },
+        ],
       };
 
       const sorted = RuleManagement.sortRulesByPriority(originalRuleSet);
@@ -218,21 +228,27 @@ describe('RuleManagement', () => {
   describe('Rule Structure Validation', () => {
     test('should validate rule set without circular dependencies', () => {
       const ruleSet: RuleSet = {
-        field1: [{
-          condition: { '==': [{ var: ['field2'] }, 'trigger'] },
-          action: { set: { target: 'field1.isVisible', value: true } },
-          priority: 1
-        }],
-        field2: [{
-          condition: { '==': [{ var: ['field3'] }, 'trigger'] },
-          action: { set: { target: 'field2.isVisible', value: true } },
-          priority: 1
-        }],
-        field3: [{
-          condition: { '==': [1, 1] },
-          action: { set: { target: 'field3.isVisible', value: true } },
-          priority: 1
-        }]
+        field1: [
+          {
+            condition: { '==': [{ var: ['field2'] }, 'trigger'] },
+            action: { set: { target: 'field1.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field2: [
+          {
+            condition: { '==': [{ var: ['field3'] }, 'trigger'] },
+            action: { set: { target: 'field2.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field3: [
+          {
+            condition: { '==': [1, 1] },
+            action: { set: { target: 'field3.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -242,21 +258,27 @@ describe('RuleManagement', () => {
 
     test('should detect circular dependencies', () => {
       const ruleSet: RuleSet = {
-        field1: [{
-          condition: { '==': [{ var: ['field2'] }, 'trigger'] },
-          action: { set: { target: 'field1.isVisible', value: true } },
-          priority: 1
-        }],
-        field2: [{
-          condition: { '==': [{ var: ['field3'] }, 'trigger'] },
-          action: { set: { target: 'field2.isVisible', value: true } },
-          priority: 1
-        }],
-        field3: [{
-          condition: { '==': [{ var: ['field1'] }, 'trigger'] },
-          action: { set: { target: 'field3.isVisible', value: true } },
-          priority: 1
-        }]
+        field1: [
+          {
+            condition: { '==': [{ var: ['field2'] }, 'trigger'] },
+            action: { set: { target: 'field1.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field2: [
+          {
+            condition: { '==': [{ var: ['field3'] }, 'trigger'] },
+            action: { set: { target: 'field2.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field3: [
+          {
+            condition: { '==': [{ var: ['field1'] }, 'trigger'] },
+            action: { set: { target: 'field3.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -266,11 +288,13 @@ describe('RuleManagement', () => {
 
     test('should handle self-referencing fields', () => {
       const ruleSet: RuleSet = {
-        field1: [{
-          condition: { '==': [{ var: ['field1'] }, 'trigger'] },
-          action: { set: { target: 'field1.isVisible', value: true } },
-          priority: 1
-        }]
+        field1: [
+          {
+            condition: { '==': [{ var: ['field1'] }, 'trigger'] },
+            action: { set: { target: 'field1.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -280,19 +304,23 @@ describe('RuleManagement', () => {
 
     test('should handle complex nested logic in dependency extraction', () => {
       const ruleSet: RuleSet = {
-        complex_field: [{
-          condition: {
-            and: [
-              { '==': [{ var: ['field1'] }, 'value'] },
-              { or: [
-                { '>': [{ var: ['field2.count'] }, 5] },
-                { '==': [{ var: ['field3'] }, 'fallback'] }
-              ]}
-            ]
+        complex_field: [
+          {
+            condition: {
+              and: [
+                { '==': [{ var: ['field1'] }, 'value'] },
+                {
+                  or: [
+                    { '>': [{ var: ['field2.count'] }, 5] },
+                    { '==': [{ var: ['field3'] }, 'fallback'] },
+                  ],
+                },
+              ],
+            },
+            action: { set: { target: 'complex_field.isVisible', value: true } },
+            priority: 1,
           },
-          action: { set: { target: 'complex_field.isVisible', value: true } },
-          priority: 1
-        }]
+        ],
       };
 
       expect(() => {
@@ -302,16 +330,15 @@ describe('RuleManagement', () => {
 
     test('should ignore $ references in dependency extraction', () => {
       const ruleSet: RuleSet = {
-        array_field: [{
-          condition: {
-            some: [
-              { var: ['items'] },
-              { '>': [{ var: ['$'] }, 10] }
-            ]
+        array_field: [
+          {
+            condition: {
+              some: [{ var: ['items'] }, { '>': [{ var: ['$'] }, 10] }],
+            },
+            action: { set: { target: 'array_field.isVisible', value: true } },
+            priority: 1,
           },
-          action: { set: { target: 'array_field.isVisible', value: true } },
-          priority: 1
-        }]
+        ],
       };
 
       expect(() => {
@@ -324,7 +351,9 @@ describe('RuleManagement', () => {
     test('should throw error indicating Node.js environment requirement', () => {
       expect(() => {
         RuleManagement.compileRules('/fake/path');
-      }).toThrow('RuleManagement.compileRules should be called from Node.js environment with file system access');
+      }).toThrow(
+        'RuleManagement.compileRules should be called from Node.js environment with file system access'
+      );
     });
   });
 });

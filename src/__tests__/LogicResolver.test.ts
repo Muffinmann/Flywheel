@@ -5,28 +5,28 @@ const fieldStateOperator = (args: any[], context: any) => {
   if (!Array.isArray(args) || args.length !== 1) {
     throw new Error('fieldState operator requires exactly one argument');
   }
-  
+
   const path = args[0];
   if (typeof path !== 'string' || !path.includes('.')) {
     throw new Error('fieldState operator requires format: fieldName.property');
   }
-  
+
   const [fieldName, ...propertyParts] = path.split('.');
   const propertyPath = propertyParts.join('.');
-  
+
   const fieldStates = context.fieldStates || {};
   const fieldState = fieldStates[fieldName];
-  
+
   if (!fieldState) {
     return undefined;
   }
-  
+
   // Navigate nested properties
   let value = fieldState;
   for (const prop of propertyParts) {
     value = value?.[prop];
   }
-  
+
   return value;
 };
 
@@ -36,9 +36,7 @@ describe('LogicResolver', () => {
   beforeEach(() => {
     resolver = new LogicResolver();
     // Register the fieldState custom operator for testing
-    resolver.registerCustomLogic([
-      { operator: 'fieldState', operand: fieldStateOperator }
-    ]);
+    resolver.registerCustomLogic([{ operator: 'fieldState', operand: fieldStateOperator }]);
   });
 
   describe('Basic Operations', () => {
@@ -51,7 +49,7 @@ describe('LogicResolver', () => {
 
     test('should handle variable references', () => {
       const context = { user: { name: 'John', age: 30 } };
-      
+
       expect(resolver.resolve({ var: ['user.name'] }, context)).toBe('John');
       expect(resolver.resolve({ var: ['user.age'] }, context)).toBe(30);
       expect(resolver.resolve({ var: ['user.missing'] }, context)).toBeUndefined();
@@ -68,14 +66,16 @@ describe('LogicResolver', () => {
           user_name: {
             isVisible: true,
             isRequired: false,
-            calculatedValue: 'John Doe'
-          }
-        }
+            calculatedValue: 'John Doe',
+          },
+        },
       };
-      
+
       expect(resolver.resolve({ fieldState: ['user_name.isVisible'] }, context)).toBe(true);
       expect(resolver.resolve({ fieldState: ['user_name.isRequired'] }, context)).toBe(false);
-      expect(resolver.resolve({ fieldState: ['user_name.calculatedValue'] }, context)).toBe('John Doe');
+      expect(resolver.resolve({ fieldState: ['user_name.calculatedValue'] }, context)).toBe(
+        'John Doe'
+      );
       expect(resolver.resolve({ fieldState: ['nonexistent.isVisible'] }, context)).toBeUndefined();
     });
 
@@ -85,35 +85,41 @@ describe('LogicResolver', () => {
           user_info: {
             permissions: {
               read: true,
-              write: false
+              write: false,
             },
             validation: {
-              message: 'Required field'
-            }
-          }
-        }
+              message: 'Required field',
+            },
+          },
+        },
       };
-      
+
       expect(resolver.resolve({ fieldState: ['user_info.permissions.read'] }, context)).toBe(true);
-      expect(resolver.resolve({ fieldState: ['user_info.permissions.write'] }, context)).toBe(false);
-      expect(resolver.resolve({ fieldState: ['user_info.validation.message'] }, context)).toBe('Required field');
+      expect(resolver.resolve({ fieldState: ['user_info.permissions.write'] }, context)).toBe(
+        false
+      );
+      expect(resolver.resolve({ fieldState: ['user_info.validation.message'] }, context)).toBe(
+        'Required field'
+      );
     });
 
     test('should throw error for invalid fieldState format', () => {
       const context = { fieldStates: {} };
-      
-      expect(() => resolver.resolve({ fieldState: ['fieldname'] }, context))
-        .toThrow('fieldState operator requires format: fieldName.property');
+
+      expect(() => resolver.resolve({ fieldState: ['fieldname'] }, context)).toThrow(
+        'fieldState operator requires format: fieldName.property'
+      );
     });
 
     test('should verify fieldState is registered as custom operator', () => {
       // Test that resolver doesn't know about fieldState without registration
       const freshResolver = new LogicResolver();
       const context = { fieldStates: { test: { isVisible: true } } };
-      
-      expect(() => freshResolver.resolve({ fieldState: ['test.isVisible'] }, context))
-        .toThrow('Unknown operator: fieldState');
-      
+
+      expect(() => freshResolver.resolve({ fieldState: ['test.isVisible'] }, context)).toThrow(
+        'Unknown operator: fieldState'
+      );
+
       // But works with registration
       expect(resolver.resolve({ fieldState: ['test.isVisible'] }, context)).toBe(true);
     });
@@ -210,13 +216,9 @@ describe('LogicResolver', () => {
 
     test('should handle nested conditions', () => {
       const logic = {
-        if: [
-          { '>': [{ var: ['age'] }, 18] },
-          'adult',
-          'minor'
-        ]
+        if: [{ '>': [{ var: ['age'] }, 18] }, 'adult', 'minor'],
       };
-      
+
       expect(resolver.resolve(logic, { age: 25 })).toBe('adult');
       expect(resolver.resolve(logic, { age: 16 })).toBe('minor');
     });
@@ -226,19 +228,21 @@ describe('LogicResolver', () => {
     test('should perform SOME operation', () => {
       const array = [1, 2, 3, 4, 5];
       const logic = { some: [array, { '>': [{ var: ['$'] }, 3] }] };
-      
+
       expect(resolver.resolve(logic, {})).toBe(true);
-      
+
       const logic2 = { some: [array, { '>': [{ var: ['$'] }, 10] }] };
       expect(resolver.resolve(logic2, {})).toBe(false);
     });
 
     test('should perform EVERY operation', () => {
       const array = [2, 4, 6, 8];
-      const logic = { every: [array, { '==': [{ '*': [{ var: ['$'] }, 2] }, { '*': [{ var: ['$'] }, 2] }] }] };
-      
+      const logic = {
+        every: [array, { '==': [{ '*': [{ var: ['$'] }, 2] }, { '*': [{ var: ['$'] }, 2] }] }],
+      };
+
       expect(resolver.resolve(logic, {})).toBe(true);
-      
+
       const array2 = [1, 2, 3];
       const logic2 = { every: [array2, { '>': [{ var: ['$'] }, 0] }] };
       expect(resolver.resolve(logic2, {})).toBe(true);
@@ -247,26 +251,30 @@ describe('LogicResolver', () => {
     test('should perform MAP operation', () => {
       const array = [1, 2, 3];
       const logic = { map: [array, { '*': [{ var: ['$'] }, 2] }] };
-      
+
       expect(resolver.resolve(logic, {})).toEqual([2, 4, 6]);
     });
   });
 
   describe('Custom Logic Registration', () => {
     test('should register and use custom operators', () => {
-      resolver.registerCustomLogic([{
-        operator: 'double',
-        operand: (args) => args[0] * 2
-      }]);
+      resolver.registerCustomLogic([
+        {
+          operator: 'double',
+          operand: (args) => args[0] * 2,
+        },
+      ]);
 
       expect(resolver.resolve({ double: [5] }, {})).toBe(10);
     });
 
     test('should override built-in operators', () => {
-      resolver.registerCustomLogic([{
-        operator: '+',
-        operand: (args) => args.reduce((acc, val) => acc - val, 0)
-      }]);
+      resolver.registerCustomLogic([
+        {
+          operator: '+',
+          operand: (args) => args.reduce((acc, val) => acc - val, 0),
+        },
+      ]);
 
       expect(resolver.resolve({ '+': [1, 2, 3] }, {})).toBe(-6);
     });
@@ -276,7 +284,7 @@ describe('LogicResolver', () => {
     test('should provide debug trace', () => {
       const logic = { and: [{ '>': [5, 3] }, { '<': [2, 4] }] };
       const { result, trace } = resolver.debugEvaluate(logic, {});
-      
+
       expect(result).toBe(true);
       expect(trace.operator).toBe('root');
       expect(trace.result).toBe(true);
@@ -299,18 +307,18 @@ describe('LogicResolver', () => {
 
   describe('Complex Nested Logic', () => {
     test('should handle deeply nested operations', () => {
-      const context = { 
+      const context = {
         user: { age: 25, scores: [85, 90, 78] },
-        threshold: 80 
+        threshold: 80,
       };
-      
+
       const logic = {
         and: [
           { '>=': [{ var: ['user.age'] }, 18] },
-          { some: [{ var: ['user.scores'] }, { '>': [{ var: ['$'] }, { var: ['threshold'] }] }] }
-        ]
+          { some: [{ var: ['user.scores'] }, { '>': [{ var: ['$'] }, { var: ['threshold'] }] }] },
+        ],
       };
-      
+
       expect(resolver.resolve(logic, context)).toBe(true);
     });
   });

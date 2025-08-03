@@ -17,13 +17,13 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.isVisible', value: true } },
-          priority: 1
+          priority: 1,
         },
         {
           condition: { '==': [2, 2] },
           action: { set: { target: 'field.isVisible', value: false } },
-          priority: 2
-        }
+          priority: 2,
+        },
       ];
 
       mockExtractActionTargets.mockReturnValue(['field.isVisible']);
@@ -38,20 +38,22 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.isVisible', value: true } },
-          priority: 1
+          priority: 1,
         },
         {
           condition: { '==': [2, 2] },
           action: { set: { target: 'field.isVisible', value: false } },
-          priority: 1
-        }
+          priority: 1,
+        },
       ];
 
       mockExtractActionTargets.mockReturnValue(['field.isVisible']);
 
       expect(() => {
         ruleValidator.validateNoPriorityConflicts('test_field', rules);
-      }).toThrow(/Conflicting rules for field 'test_field' target 'field.isVisible' with same priority 1/);
+      }).toThrow(
+        /Conflicting rules for field 'test_field' target 'field.isVisible' with same priority 1/
+      );
     });
 
     test('should allow same priority for different targets', () => {
@@ -59,13 +61,13 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.isVisible', value: true } },
-          priority: 1
+          priority: 1,
         },
         {
           condition: { '==': [2, 2] },
           action: { set: { target: 'field.isRequired', value: true } },
-          priority: 1
-        }
+          priority: 1,
+        },
       ];
 
       mockExtractActionTargets
@@ -84,16 +86,16 @@ describe('RuleValidator', () => {
           action: {
             batch: [
               { set: { target: 'field.isVisible', value: true } },
-              { set: { target: 'field.isRequired', value: true } }
-            ]
+              { set: { target: 'field.isRequired', value: true } },
+            ],
           },
-          priority: 1
+          priority: 1,
         },
         {
           condition: { '==': [2, 2] },
           action: { set: { target: 'field.isVisible', value: false } },
-          priority: 1
-        }
+          priority: 1,
+        },
       ];
 
       mockExtractActionTargets
@@ -102,7 +104,9 @@ describe('RuleValidator', () => {
 
       expect(() => {
         ruleValidator.validateNoPriorityConflicts('test_field', rules);
-      }).toThrow(/Conflicting rules for field 'test_field' target 'field.isVisible' with same priority 1/);
+      }).toThrow(
+        /Conflicting rules for field 'test_field' target 'field.isVisible' with same priority 1/
+      );
     });
 
     test('should handle complex priority conflict scenarios', () => {
@@ -110,18 +114,18 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.prop1', value: 'a' } },
-          priority: 1
+          priority: 1,
         },
         {
           condition: { '==': [2, 2] },
           action: { set: { target: 'field.prop2', value: 'b' } },
-          priority: 1
+          priority: 1,
         },
         {
           condition: { '==': [3, 3] },
           action: { set: { target: 'field.prop1', value: 'c' } },
-          priority: 1
-        }
+          priority: 1,
+        },
       ];
 
       mockExtractActionTargets
@@ -131,7 +135,9 @@ describe('RuleValidator', () => {
 
       expect(() => {
         ruleValidator.validateNoPriorityConflicts('test_field', rules);
-      }).toThrow(/Conflicting rules for field 'test_field' target 'field.prop1' with same priority 1/);
+      }).toThrow(
+        /Conflicting rules for field 'test_field' target 'field.prop1' with same priority 1/
+      );
     });
   });
 
@@ -141,18 +147,18 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [3, 3] },
           action: { set: { target: 'field.value', value: 'third' } },
-          priority: 3
+          priority: 3,
         },
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.value', value: 'first' } },
-          priority: 1
+          priority: 1,
         },
         {
           condition: { '==': [2, 2] },
           action: { set: { target: 'field.value', value: 'second' } },
-          priority: 2
-        }
+          priority: 2,
+        },
       ];
 
       const sorted = ruleValidator.sortRulesByPriority(rules);
@@ -169,14 +175,14 @@ describe('RuleValidator', () => {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.value', value: 'first' } },
           priority: 1,
-          description: 'Rule A'
+          description: 'Rule A',
         },
         {
           condition: { '==': [2, 2] },
           action: { set: { target: 'field.other', value: 'second' } },
           priority: 1,
-          description: 'Rule B'
-        }
+          description: 'Rule B',
+        },
       ];
 
       const sorted = ruleValidator.sortRulesByPriority(rules);
@@ -196,8 +202,8 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.value', value: 'only' } },
-          priority: 1
-        }
+          priority: 1,
+        },
       ];
 
       const sorted = ruleValidator.sortRulesByPriority(rules);
@@ -212,7 +218,7 @@ describe('RuleValidator', () => {
         condition: { '==': [1, 1] },
         action: { set: { target: 'field.isVisible', value: true } },
         priority: 1,
-        description: 'Valid rule'
+        description: 'Valid rule',
       };
 
       expect(() => {
@@ -223,7 +229,7 @@ describe('RuleValidator', () => {
     test('should throw error for missing condition', () => {
       const rule = {
         action: { set: { target: 'field.isVisible', value: true } },
-        priority: 1
+        priority: 1,
       } as any;
 
       expect(() => {
@@ -234,7 +240,7 @@ describe('RuleValidator', () => {
     test('should throw error for missing action', () => {
       const rule = {
         condition: { '==': [1, 1] },
-        priority: 1
+        priority: 1,
       } as any;
 
       expect(() => {
@@ -246,7 +252,7 @@ describe('RuleValidator', () => {
       const rule = {
         condition: { '==': [1, 1] },
         action: { set: { target: 'field.isVisible', value: true } },
-        priority: 'invalid'
+        priority: 'invalid',
       } as any;
 
       expect(() => {
@@ -257,7 +263,7 @@ describe('RuleValidator', () => {
     test('should throw error for missing priority', () => {
       const rule = {
         condition: { '==': [1, 1] },
-        action: { set: { target: 'field.isVisible', value: true } }
+        action: { set: { target: 'field.isVisible', value: true } },
       } as any;
 
       expect(() => {
@@ -269,7 +275,7 @@ describe('RuleValidator', () => {
   describe('Shared Rule Validation', () => {
     test('should validate existing shared rule', () => {
       const sharedRules = {
-        'existing_rule': { '==': [1, 1] }
+        existing_rule: { '==': [1, 1] },
       };
 
       expect(() => {
@@ -279,7 +285,7 @@ describe('RuleValidator', () => {
 
     test('should throw error for missing shared rule', () => {
       const sharedRules = {
-        'other_rule': { '==': [1, 1] }
+        other_rule: { '==': [1, 1] },
       };
 
       expect(() => {
@@ -302,13 +308,13 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.isVisible', value: true } },
-          priority: 1
+          priority: 1,
         },
         {
           condition: { '==': [2, 2] },
           action: { copy: { source: 'src', target: 'field.calculatedValue' } },
-          priority: 1
-        }
+          priority: 1,
+        },
       ];
 
       mockExtractActionTargets
@@ -329,8 +335,8 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { trigger: { event: 'test_event' } },
-          priority: 1
-        }
+          priority: 1,
+        },
       ];
 
       mockExtractActionTargets.mockReturnValue([]);
@@ -347,8 +353,8 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.isVisible', value: true } },
-          priority: 0
-        }
+          priority: 0,
+        },
       ];
 
       mockExtractActionTargets.mockReturnValue(['field.isVisible']);
@@ -363,13 +369,13 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.isVisible', value: true } },
-          priority: -1
+          priority: -1,
         },
         {
           condition: { '==': [2, 2] },
           action: { set: { target: 'field.isVisible', value: false } },
-          priority: 1
-        }
+          priority: 1,
+        },
       ];
 
       mockExtractActionTargets.mockReturnValue(['field.isVisible']);
@@ -384,8 +390,8 @@ describe('RuleValidator', () => {
         {
           condition: { '==': [1, 1] },
           action: { set: { target: 'field.isVisible', value: true } },
-          priority: Number.MAX_SAFE_INTEGER
-        }
+          priority: Number.MAX_SAFE_INTEGER,
+        },
       ];
 
       mockExtractActionTargets.mockReturnValue(['field.isVisible']);

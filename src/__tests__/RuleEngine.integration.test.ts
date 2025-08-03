@@ -11,12 +11,14 @@ describe('RuleEngine Integration', () => {
   describe('Basic Rule Evaluation', () => {
     test('should evaluate simple visibility rule', () => {
       const ruleSet: RuleSet = {
-        foot_cup_size: [{
-          condition: { '==': [{ var: ['foot_guidance.value'] }, 'foot_cup'] },
-          action: { set: { target: 'foot_cup_size.isVisible', value: true } },
-          priority: 1,
-          description: 'Show foot cup size when foot cup is selected'
-        }]
+        foot_cup_size: [
+          {
+            condition: { '==': [{ var: ['foot_guidance.value'] }, 'foot_cup'] },
+            action: { set: { target: 'foot_cup_size.isVisible', value: true } },
+            priority: 1,
+            description: 'Show foot cup size when foot cup is selected',
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -28,16 +30,18 @@ describe('RuleEngine Integration', () => {
 
     test('should handle multiple conditions', () => {
       const ruleSet: RuleSet = {
-        advanced_options: [{
-          condition: {
-            and: [
-              { '==': [{ var: ['user_type.value'] }, 'admin'] },
-              { '>': [{ var: ['experience_level.value'] }, 5] }
-            ]
+        advanced_options: [
+          {
+            condition: {
+              and: [
+                { '==': [{ var: ['user_type.value'] }, 'admin'] },
+                { '>': [{ var: ['experience_level.value'] }, 5] },
+              ],
+            },
+            action: { set: { target: 'advanced_options.isVisible', value: true } },
+            priority: 1,
           },
-          action: { set: { target: 'advanced_options.isVisible', value: true } },
-          priority: 1
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -54,26 +58,38 @@ describe('RuleEngine Integration', () => {
       const engine = new RuleEngine({
         onEvent: (eventType, params) => {
           events.push({ eventType, params });
-        }
+        },
       });
 
       const ruleSet: RuleSet = {
-        complex_field: [{
-          condition: {
-            and: [
-              { '==': [{ var: ['user_type.value'] }, 'admin'] },
-              { '>': [{ var: ['score.value'] }, 80] }
-            ]
+        complex_field: [
+          {
+            condition: {
+              and: [
+                { '==': [{ var: ['user_type.value'] }, 'admin'] },
+                { '>': [{ var: ['score.value'] }, 80] },
+              ],
+            },
+            action: {
+              batch: [
+                { set: { target: 'complex_field.isVisible', value: true } },
+                {
+                  calculate: {
+                    target: 'complex_field.calculatedValue',
+                    formula: { '*': [{ var: ['score.value'] }, 1.5] },
+                  },
+                },
+                {
+                  trigger: {
+                    event: 'admin_high_score',
+                    params: { score: { var: ['score.value'] } },
+                  },
+                },
+              ],
+            },
+            priority: 1,
           },
-          action: {
-            batch: [
-              { set: { target: 'complex_field.isVisible', value: true } },
-              { calculate: { target: 'complex_field.calculatedValue', formula: { '*': [{ var: ['score.value'] }, 1.5] } } },
-              { trigger: { event: 'admin_high_score', params: { score: { var: ['score.value'] } } } }
-            ]
-          },
-          priority: 1
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -89,21 +105,27 @@ describe('RuleEngine Integration', () => {
 
     test('should handle cascading field evaluations', () => {
       const ruleSet: RuleSet = {
-        field_a: [{
-          condition: { '==': [{ var: ['trigger.value'] }, 'start'] },
-          action: { set: { target: 'field_a.calculatedValue', value: 'step_1' } },
-          priority: 1
-        }],
-        field_b: [{
-          condition: { '==': [{ var: ['field_a.calculatedValue'] }, 'step_1'] },
-          action: { set: { target: 'field_b.calculatedValue', value: 'step_2' } },
-          priority: 1
-        }],
-        field_c: [{
-          condition: { '==': [{ var: ['field_b.calculatedValue'] }, 'step_2'] },
-          action: { set: { target: 'field_c.isVisible', value: true } },
-          priority: 1
-        }]
+        field_a: [
+          {
+            condition: { '==': [{ var: ['trigger.value'] }, 'start'] },
+            action: { set: { target: 'field_a.calculatedValue', value: 'step_1' } },
+            priority: 1,
+          },
+        ],
+        field_b: [
+          {
+            condition: { '==': [{ var: ['field_a.calculatedValue'] }, 'step_1'] },
+            action: { set: { target: 'field_b.calculatedValue', value: 'step_2' } },
+            priority: 1,
+          },
+        ],
+        field_c: [
+          {
+            condition: { '==': [{ var: ['field_b.calculatedValue'] }, 'step_2'] },
+            action: { set: { target: 'field_c.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -129,14 +151,14 @@ describe('RuleEngine Integration', () => {
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'priority_field.calculatedValue', value: 'first' } },
-            priority: 2
+            priority: 2,
           },
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'priority_field.calculatedValue', value: 'second' } },
-            priority: 1
-          }
-        ]
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -152,14 +174,14 @@ describe('RuleEngine Integration', () => {
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'conflict_field.isVisible', value: true } },
-            priority: 1
+            priority: 1,
           },
           {
             condition: { '==': [1, 1] },
             action: { set: { target: 'conflict_field.isVisible', value: false } },
-            priority: 1
-          }
-        ]
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -173,11 +195,13 @@ describe('RuleEngine Integration', () => {
   describe('Dependency Management Integration', () => {
     test('should manage dependencies through DependencyGraph module', () => {
       const ruleSet: RuleSet = {
-        dependent_field: [{
-          condition: { '==': [{ var: ['source_field.value'] }, 'trigger'] },
-          action: { set: { target: 'dependent_field.isVisible', value: true } },
-          priority: 1
-        }]
+        dependent_field: [
+          {
+            condition: { '==': [{ var: ['source_field.value'] }, 'trigger'] },
+            action: { set: { target: 'dependent_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -188,15 +212,18 @@ describe('RuleEngine Integration', () => {
 
     test('should handle cache invalidation through integrated modules', () => {
       const ruleSet: RuleSet = {
-        dependent_field: [{
-          condition: { '==': [{ var: ['source_field.value'] }, 'show'] },
-          action: { set: { target: 'dependent_field.isVisible', value: true } },
-          priority: 1
-        }, {
-          condition: { '!=': [{ var: ['source_field.value'] }, 'show'] },
-          action: { set: { target: 'dependent_field.isVisible', value: false } },
-          priority: 2
-        }]
+        dependent_field: [
+          {
+            condition: { '==': [{ var: ['source_field.value'] }, 'show'] },
+            action: { set: { target: 'dependent_field.isVisible', value: true } },
+            priority: 1,
+          },
+          {
+            condition: { '!=': [{ var: ['source_field.value'] }, 'show'] },
+            action: { set: { target: 'dependent_field.isVisible', value: false } },
+            priority: 2,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -216,16 +243,20 @@ describe('RuleEngine Integration', () => {
 
     test('should detect circular dependencies at load time', () => {
       const ruleSet: RuleSet = {
-        field_a: [{
-          condition: { '==': [{ var: ['field_b.value'] }, 'trigger'] },
-          action: { set: { target: 'field_a.isVisible', value: true } },
-          priority: 1
-        }],
-        field_b: [{
-          condition: { '==': [{ var: ['field_a.value'] }, 'trigger'] },
-          action: { set: { target: 'field_b.isVisible', value: true } },
-          priority: 1
-        }]
+        field_a: [
+          {
+            condition: { '==': [{ var: ['field_b.value'] }, 'trigger'] },
+            action: { set: { target: 'field_a.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field_b: [
+          {
+            condition: { '==': [{ var: ['field_a.value'] }, 'trigger'] },
+            action: { set: { target: 'field_b.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -237,15 +268,17 @@ describe('RuleEngine Integration', () => {
   describe('Shared Rules Integration', () => {
     test('should resolve shared rule references', () => {
       const sharedRules = {
-        is_admin: { '==': [{ var: ['user_role.value'] }, 'admin'] }
+        is_admin: { '==': [{ var: ['user_role.value'] }, 'admin'] },
       };
 
       const ruleSet: RuleSet = {
-        admin_panel: [{
-          condition: { '$ref': 'is_admin' },
-          action: { set: { target: 'admin_panel.isVisible', value: true } },
-          priority: 1
-        }]
+        admin_panel: [
+          {
+            condition: { $ref: 'is_admin' },
+            action: { set: { target: 'admin_panel.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.registerSharedRules(sharedRules);
@@ -258,11 +291,13 @@ describe('RuleEngine Integration', () => {
 
     test('should throw error for missing shared rules', () => {
       const ruleSet: RuleSet = {
-        test_field: [{
-          condition: { '$ref': 'missing_rule' },
-          action: { set: { target: 'test_field.isVisible', value: true } },
-          priority: 1
-        }]
+        test_field: [
+          {
+            condition: { $ref: 'missing_rule' },
+            action: { set: { target: 'test_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -280,19 +315,19 @@ describe('RuleEngine Integration', () => {
           {
             condition: { '!=': [{ varTable: ['selected_product@product-table.price'] }, 0] },
             action: { set: { target: 'selected_product_price.isVisible', value: true } },
-            priority: 1
+            priority: 1,
           },
           {
             condition: {
               '>': [
-                { 'lookup': ['product-table', { var: ['selected_product.value'] }, 'price'] },
+                { lookup: ['product-table', { var: ['selected_product.value'] }, 'price'] },
                 50,
-              ]
+              ],
             },
             action: { set: { target: 'selected_product_price.isRequired', value: true } },
-            priority: 2
+            priority: 2,
           },
-        ]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -300,17 +335,17 @@ describe('RuleEngine Integration', () => {
       const lookupTable = {
         table: [
           { id: 'prod1', name: 'Product 1', price: 100 },
-          { id: 'prod2', name: 'Product 2', price: 200 }
+          { id: 'prod2', name: 'Product 2', price: 200 },
         ],
         primaryKey: 'id',
-        name: 'product-table'
+        name: 'product-table',
       };
 
       engine.registerLookupTables([lookupTable]);
 
       // Test the @ syntax in field paths
       engine.updateFieldValue({ selected_product: 'prod1' });
-      const productPriceState = engine.evaluateField('selected_product_price')
+      const productPriceState = engine.evaluateField('selected_product_price');
 
       expect(productPriceState.isVisible).toBeTruthy();
       expect(productPriceState.isRequired).toBeTruthy();
@@ -322,16 +357,18 @@ describe('RuleEngine Integration', () => {
       const engine = new RuleEngine({
         onFieldStateCreation: () => ({
           customProperty: 'default_value',
-          readOnly: false
-        })
+          readOnly: false,
+        }),
       });
 
       const ruleSet: RuleSet = {
-        custom_field: [{
-          condition: { '==': [1, 1] },
-          action: { set: { target: 'custom_field.customProperty', value: 'modified' } },
-          priority: 1
-        }]
+        custom_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: { set: { target: 'custom_field.customProperty', value: 'modified' } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -346,19 +383,25 @@ describe('RuleEngine Integration', () => {
     test('should integrate custom action handlers', () => {
       const logs: string[] = [];
 
-      engine.registerActionHandler({
+      interface LogPayload {
+        message: string;
+      }
+
+      engine.registerActionHandler<LogPayload>({
         actionType: 'log',
         handler: (payload) => {
           logs.push(payload.message);
-        }
+        },
       });
 
       const ruleSet: RuleSet = {
-        log_field: [{
-          condition: { '==': [1, 1] },
-          action: { log: { message: 'Custom action executed' } } as any,
-          priority: 1
-        }]
+        log_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: { log: { message: 'Custom action executed' } } as any,
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -369,11 +412,13 @@ describe('RuleEngine Integration', () => {
 
     test('should handle unknown actions through ActionHandler', () => {
       const ruleSet: RuleSet = {
-        unknown_action: [{
-          condition: { '==': [1, 1] },
-          action: { unknownAction: { data: 'test' } } as any,
-          priority: 1
-        }]
+        unknown_action: [
+          {
+            condition: { '==': [1, 1] },
+            action: { unknownAction: { data: 'test' } } as any,
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -395,11 +440,13 @@ describe('RuleEngine Integration', () => {
 
     test('should handle rules with false conditions', () => {
       const ruleSet: RuleSet = {
-        conditional_field: [{
-          condition: { '==': [1, 2] }, // Always false
-          action: { set: { target: 'conditional_field.isVisible', value: true } },
-          priority: 1
-        }]
+        conditional_field: [
+          {
+            condition: { '==': [1, 2] }, // Always false
+            action: { set: { target: 'conditional_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -410,11 +457,13 @@ describe('RuleEngine Integration', () => {
 
     test('should handle multiple updates to same field', () => {
       const ruleSet: RuleSet = {
-        reactive_field: [{
-          condition: { '>': [{ var: ['counter.value'] }, 5] },
-          action: { set: { target: 'reactive_field.isVisible', value: true } },
-          priority: 1
-        }]
+        reactive_field: [
+          {
+            condition: { '>': [{ var: ['counter.value'] }, 5] },
+            action: { set: { target: 'reactive_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -433,41 +482,53 @@ describe('RuleEngine Integration', () => {
       const events: any[] = [];
       const engine = new RuleEngine({
         onEvent: (eventType, params) => events.push({ eventType, params }),
-        onFieldStateCreation: () => ({ customFlag: false })
+        onFieldStateCreation: () => ({ customFlag: false }),
       });
 
       // Register lookup tables
-      engine.registerLookupTables([{
-        table: [{ id: 'premium', multiplier: 2.0, features: ['advanced'] }],
-        primaryKey: 'id',
-        name: 'plans'
-      }]);
+      engine.registerLookupTables([
+        {
+          table: [{ id: 'premium', multiplier: 2.0, features: ['advanced'] }],
+          primaryKey: 'id',
+          name: 'plans',
+        },
+      ]);
 
       // Register shared rules
       engine.registerSharedRules({
-        is_premium: { '==': [{ var: ['user_plan.value'] }, 'premium'] }
+        is_premium: { '==': [{ var: ['user_plan.value'] }, 'premium'] },
       });
 
       const ruleSet: RuleSet = {
         feature_access: [
           {
-            condition: { '$ref': 'is_premium' },
+            condition: { $ref: 'is_premium' },
             action: {
               batch: [
                 { set: { target: 'feature_access.isVisible', value: true } },
                 {
                   calculate: {
                     target: 'feature_access.calculatedValue',
-                    formula: { '*': [{ var: ['base_score.value'] }, { lookup: ['plans', { var: ['user_plan.value'] }, 'multiplier'] }] }
-                  }
+                    formula: {
+                      '*': [
+                        { var: ['base_score.value'] },
+                        { lookup: ['plans', { var: ['user_plan.value'] }, 'multiplier'] },
+                      ],
+                    },
+                  },
                 },
                 { set: { target: 'feature_access.customFlag', value: true } },
-                { trigger: { event: 'premium_access_granted', params: { plan: { var: ['user_plan.value'] } } } }
-              ]
+                {
+                  trigger: {
+                    event: 'premium_access_granted',
+                    params: { plan: { var: ['user_plan.value'] } },
+                  },
+                },
+              ],
             },
-            priority: 1
-          }
-        ]
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);

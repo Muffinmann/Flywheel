@@ -13,18 +13,18 @@ describe('ActionHandler', () => {
     mockOnEvent = jest.fn();
     mockOnFieldPropertySet = jest.fn();
     mockOnFieldInit = jest.fn();
-    
+
     actionHandler = new ActionHandler(logicResolver, {
       onEvent: mockOnEvent,
       onFieldPropertySet: mockOnFieldPropertySet,
-      onFieldInit: mockOnFieldInit
+      onFieldInit: mockOnFieldInit,
     });
   });
 
   describe('Built-in Actions', () => {
     test('should handle SET action for field properties', () => {
       const action: Action = {
-        set: { target: 'field.value', value: 'test_value' }
+        set: { target: 'field.value', value: 'test_value' },
       };
 
       actionHandler.executeAction(action, {});
@@ -34,7 +34,7 @@ describe('ActionHandler', () => {
 
     test('should handle SET action for field state properties', () => {
       const action: Action = {
-        set: { target: 'field.isVisible', value: true }
+        set: { target: 'field.isVisible', value: true },
       };
 
       actionHandler.executeAction(action, {});
@@ -44,7 +44,7 @@ describe('ActionHandler', () => {
 
     test('should handle SET action with dot notation targets', () => {
       const action: Action = {
-        set: { target: 'field.nested.property', value: 'nested_value' }
+        set: { target: 'field.nested.property', value: 'nested_value' },
       };
 
       actionHandler.executeAction(action, {});
@@ -54,7 +54,7 @@ describe('ActionHandler', () => {
 
     test('should handle COPY action', () => {
       const action: Action = {
-        copy: { source: 'sourceField.value', target: 'targetField.value' }
+        copy: { source: 'sourceField.value', target: 'targetField.value' },
       };
       const context = { sourceField: { value: 'copied_value' } };
 
@@ -67,8 +67,8 @@ describe('ActionHandler', () => {
       const action: Action = {
         calculate: {
           target: 'totalField.value',
-          formula: { '+': [{ var: ['a.value'] }, { var: ['b.value'] }] }
-        }
+          formula: { '+': [{ var: ['a.value'] }, { var: ['b.value'] }] },
+        },
       };
       const context = { a: { value: 10 }, b: { value: 5 } };
 
@@ -81,8 +81,8 @@ describe('ActionHandler', () => {
       const action: Action = {
         calculate: {
           target: 'field.calculatedValue',
-          formula: { '+': [{ var: ['a.value'] }, { var: ['b.value'] }] }
-        }
+          formula: { '+': [{ var: ['a.value'] }, { var: ['b.value'] }] },
+        },
       };
       const context = { a: { value: 10 }, b: { value: 5 } };
 
@@ -93,7 +93,7 @@ describe('ActionHandler', () => {
 
     test('should handle TRIGGER action', () => {
       const action: Action = {
-        trigger: { event: 'custom_event', params: { data: 'test' } }
+        trigger: { event: 'custom_event', params: { data: 'test' } },
       };
 
       actionHandler.executeAction(action, {});
@@ -105,8 +105,8 @@ describe('ActionHandler', () => {
       const action: Action = {
         batch: [
           { set: { target: 'field.isVisible', value: true } },
-          { set: { target: 'field.isRequired', value: true } }
-        ]
+          { set: { target: 'field.isRequired', value: true } },
+        ],
       };
 
       actionHandler.executeAction(action, {});
@@ -143,7 +143,7 @@ describe('ActionHandler', () => {
       actionHandler.registerActionHandler('set', customSetHandler);
 
       const action: Action = {
-        set: { target: 'field.value', value: 'test' }
+        set: { target: 'field.value', value: 'test' },
       };
 
       actionHandler.executeAction(action, {});
@@ -153,12 +153,10 @@ describe('ActionHandler', () => {
     });
   });
 
-
-
   describe('Edge Cases', () => {
     test('should handle COPY action with complex nested paths', () => {
       const action: Action = {
-        copy: { source: 'nested.field.value', target: 'targetField.value' }
+        copy: { source: 'nested.field.value', target: 'targetField.value' },
       };
       const context = { nested: { field: { value: 'deep_value' } } };
 
@@ -172,12 +170,9 @@ describe('ActionHandler', () => {
         calculate: {
           target: 'field.result',
           formula: {
-            '+': [
-              { '*': [{ var: ['a.value'] }, 2] },
-              { var: ['b.value'] }
-            ]
-          }
-        }
+            '+': [{ '*': [{ var: ['a.value'] }, 2] }, { var: ['b.value'] }],
+          },
+        },
       };
       const context = { a: { value: 5 }, b: { value: 3 } };
 
@@ -188,7 +183,7 @@ describe('ActionHandler', () => {
 
     test('should handle TRIGGER action without params', () => {
       const action: Action = {
-        trigger: { event: 'simple_event' }
+        trigger: { event: 'simple_event' },
       };
 
       actionHandler.executeAction(action, {});

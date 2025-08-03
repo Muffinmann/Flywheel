@@ -11,20 +11,22 @@ describe('RuleEngine - Init Action', () => {
   describe('Basic Init Action', () => {
     test('should initialize field state with init action', () => {
       const ruleSet: RuleSet = {
-        payment_form: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {
-              fieldState: {
-                isVisible: true,
-                currency: 'USD',
-                paymentMethods: ['card', 'paypal']
-              }
-            }
+        payment_form: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              init: {
+                fieldState: {
+                  isVisible: true,
+                  currency: 'USD',
+                  paymentMethods: ['card', 'paypal'],
+                },
+              },
+            },
+            priority: 0,
+            description: 'Initialize payment form',
           },
-          priority: 0,
-          description: 'Initialize payment form'
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -37,15 +39,17 @@ describe('RuleEngine - Init Action', () => {
 
     test('should initialize field value with init action', () => {
       const ruleSet: RuleSet = {
-        user_preference: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {
-              fieldValue: 'dark-mode'
-            }
+        user_preference: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              init: {
+                fieldValue: 'dark-mode',
+              },
+            },
+            priority: 0,
           },
-          priority: 0
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -58,19 +62,21 @@ describe('RuleEngine - Init Action', () => {
 
     test('should initialize both field state and value', () => {
       const ruleSet: RuleSet = {
-        subscription: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {
-              fieldState: {
-                isVisible: true,
-                plans: ['basic', 'pro', 'enterprise']
+        subscription: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              init: {
+                fieldState: {
+                  isVisible: true,
+                  plans: ['basic', 'pro', 'enterprise'],
+                },
+                fieldValue: 'pro',
               },
-              fieldValue: 'pro'
-            }
+            },
+            priority: 0,
           },
-          priority: 0
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -95,11 +101,11 @@ describe('RuleEngine - Init Action', () => {
                 fieldState: {
                   isVisible: true,
                   methods: ['card', 'paypal', 'crypto'],
-                  allowSavedCards: true
-                }
-              }
+                  allowSavedCards: true,
+                },
+              },
             },
-            priority: 0
+            priority: 0,
           },
           {
             condition: { '==': [{ var: ['user.value.role'] }, 'basic'] },
@@ -108,13 +114,13 @@ describe('RuleEngine - Init Action', () => {
                 fieldState: {
                   isVisible: true,
                   methods: ['card', 'paypal'],
-                  allowSavedCards: false
-                }
-              }
+                  allowSavedCards: false,
+                },
+              },
             },
-            priority: 0
-          }
-        ]
+            priority: 0,
+          },
+        ],
       };
 
       // Test premium user
@@ -144,11 +150,11 @@ describe('RuleEngine - Init Action', () => {
               init: {
                 fieldState: {
                   version: 'beta',
-                  features: ['new-ui', 'advanced-analytics']
-                }
-              }
+                  features: ['new-ui', 'advanced-analytics'],
+                },
+              },
             },
-            priority: 0
+            priority: 0,
           },
           {
             condition: { '==': [1, 1] }, // Always true fallback
@@ -156,13 +162,13 @@ describe('RuleEngine - Init Action', () => {
               init: {
                 fieldState: {
                   version: 'stable',
-                  features: ['basic-ui']
-                }
-              }
+                  features: ['basic-ui'],
+                },
+              },
             },
-            priority: 1
-          }
-        ]
+            priority: 1,
+          },
+        ],
       };
 
       // Test beta enabled
@@ -190,23 +196,25 @@ describe('RuleEngine - Init Action', () => {
         onFieldStateCreation: () => ({
           isVisible: false,
           isRequired: false,
-          defaultProp: 'default'
-        })
+          defaultProp: 'default',
+        }),
       });
 
       const ruleSet: RuleSet = {
-        test_field: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {
-              fieldState: {
-                isVisible: true,
-                customProp: 'custom'
+        test_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              init: {
+                fieldState: {
+                  isVisible: true,
+                  customProp: 'custom',
+                },
               },
-            }
+            },
+            priority: 0,
           },
-          priority: 0
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -223,30 +231,32 @@ describe('RuleEngine - Init Action', () => {
         onFieldStateCreation: () => ({
           isVisible: false,
           isRequired: false,
-          defaultProp: 'default'
-        })
+          defaultProp: 'default',
+        }),
       });
 
       const ruleSet: RuleSet = {
-        test_field: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {
-              fieldState: {
-                isVisible: true,
-                customProp: 'custom'
+        test_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              init: {
+                fieldState: {
+                  isVisible: true,
+                  customProp: 'custom',
+                },
               },
-            }
+            },
+            priority: 0,
           },
-          priority: 0
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
       const fieldState = engine.evaluateField('test_field');
 
       expect(fieldState.isVisible).toBe(true); // Overridden by init
-      expect(fieldState.isRequired).toBe(false); // Kept from default  
+      expect(fieldState.isRequired).toBe(false); // Kept from default
       expect(fieldState.defaultProp).toBe('default'); // Kept from default
       expect(fieldState.customProp).toBe('custom'); // Added by init
     });
@@ -262,30 +272,30 @@ describe('RuleEngine - Init Action', () => {
             condition: { '==': [1, 1] },
             action: {
               init: {
-                fieldState: { value: 'third' }
-              }
+                fieldState: { value: 'third' },
+              },
             },
-            priority: 2
+            priority: 2,
           },
           {
             condition: { '==': [1, 1] },
             action: {
               init: {
-                fieldState: { value: 'first' }
-              }
+                fieldState: { value: 'first' },
+              },
             },
-            priority: 0
+            priority: 0,
           },
           {
             condition: { '==': [1, 1] },
             action: {
               init: {
-                fieldState: { value: 'second' }
-              }
+                fieldState: { value: 'second' },
+              },
             },
-            priority: 1
-          }
-        ]
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -306,21 +316,21 @@ describe('RuleEngine - Init Action', () => {
             condition: { '==': [1, 1] },
             action: {
               init: {
-                fieldState: { value: 'rule1' }
-              }
+                fieldState: { value: 'rule1' },
+              },
             },
-            priority: 0
+            priority: 0,
           },
           {
             condition: { '==': [1, 1] },
             action: {
               init: {
-                fieldState: { value: 'rule2' }
-              }
+                fieldState: { value: 'rule2' },
+              },
             },
-            priority: 0
-          }
-        ]
+            priority: 0,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -350,23 +360,23 @@ describe('RuleEngine - Init Action', () => {
               init: {
                 fieldState: {
                   isVisible: true,
-                  counter: 0
-                }
-              }
+                  counter: 0,
+                },
+              },
             },
-            priority: 0
+            priority: 0,
           },
           {
             condition: { '==': [1, 1] },
             action: {
               set: {
                 target: 'integration_test.modified',
-                value: true
-              }
+                value: true,
+              },
             },
-            priority: 10
-          }
-        ]
+            priority: 10,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -388,14 +398,14 @@ describe('RuleEngine - Init Action', () => {
         actionType: 'trackInit',
         handler: () => {
           initCount++;
-        }
+        },
       });
 
       customEngine.registerActionHandler({
         actionType: 'trackRegular',
         handler: () => {
           regularCount++;
-        }
+        },
       });
 
       // Separate init and regular rules to avoid context issues
@@ -405,22 +415,22 @@ describe('RuleEngine - Init Action', () => {
             condition: { '==': [1, 1] },
             action: {
               init: {
-                fieldState: { initialized: true }
-              }
+                fieldState: { initialized: true },
+              },
             },
-            priority: 0
+            priority: 0,
           },
           {
             condition: { '==': [1, 1] },
             action: { trackInit: {} } as any,
-            priority: 1
+            priority: 1,
           },
           {
             condition: { '==': [1, 1] },
             action: { trackRegular: {} } as any,
-            priority: 2
-          }
-        ]
+            priority: 2,
+          },
+        ],
       };
 
       customEngine.loadRuleSet(initRuleSet);
@@ -434,13 +444,15 @@ describe('RuleEngine - Init Action', () => {
   describe('Validation', () => {
     test('should throw error if init action has neither fieldState nor fieldValue', () => {
       const ruleSet: RuleSet = {
-        invalid_init: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {}
+        invalid_init: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              init: {},
+            },
+            priority: 0,
           },
-          priority: 0
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -456,18 +468,19 @@ describe('RuleEngine - Init Action', () => {
       expect(fieldState.isVisible).toBe(false);
     });
 
-
     test('should throw error if fieldState is not an object', () => {
       const ruleSet: RuleSet = {
-        invalid_state: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {
-              fieldState: 'invalid' as any
-            }
+        invalid_state: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              init: {
+                fieldState: 'invalid' as any,
+              },
+            },
+            priority: 0,
           },
-          priority: 0
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -486,15 +499,17 @@ describe('RuleEngine - Init Action', () => {
   describe('Cache Behavior', () => {
     test('should cache field state after init', () => {
       const ruleSet: RuleSet = {
-        cached_field: [{
-          condition: { '==': [1, 1] },
-          action: {
-            init: {
-              fieldState: { initialized: true }
-            }
+        cached_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              init: {
+                fieldState: { initialized: true },
+              },
+            },
+            priority: 0,
           },
-          priority: 0
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);

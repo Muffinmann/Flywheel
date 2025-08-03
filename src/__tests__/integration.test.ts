@@ -10,8 +10,8 @@ describe('Integration Tests', () => {
         onFieldStateCreation: () => ({
           options: [],
           price: 0,
-          description: ''
-        })
+          description: '',
+        }),
       });
     });
 
@@ -19,87 +19,96 @@ describe('Integration Tests', () => {
       const sharedRules = {
         is_premium_user: { '==': [{ var: ['user.value.tier'] }, 'premium'] },
         has_discount_code: { '!=': [{ var: ['discount_code.value'] }, null] },
-        product_is_clothing: { '==': [{ var: ['product.value.category'] }, 'clothing'] }
+        product_is_clothing: { '==': [{ var: ['product.value.category'] }, 'clothing'] },
       };
 
       const ruleSet: RuleSet = {
         // Size options only visible for clothing
-        size_selector: [{
-          condition: { '==': [{ var: ['product.value.category'] }, 'clothing'] },
-          action: { set: { target: 'size_selector.isVisible', value: true } },
-          priority: 1,
-          description: 'Show size selector for clothing items'
-        }],
+        size_selector: [
+          {
+            condition: { '==': [{ var: ['product.value.category'] }, 'clothing'] },
+            action: { set: { target: 'size_selector.isVisible', value: true } },
+            priority: 1,
+            description: 'Show size selector for clothing items',
+          },
+        ],
 
         // Premium options only for premium users
-        premium_customization: [{
-          condition: { '==': [{ var: ['user.value.tier'] }, 'premium'] },
-          action: { set: { target: 'premium_customization.isVisible', value: true } },
-          priority: 1,
-          description: 'Show premium customization for premium users'
-        }],
+        premium_customization: [
+          {
+            condition: { '==': [{ var: ['user.value.tier'] }, 'premium'] },
+            action: { set: { target: 'premium_customization.isVisible', value: true } },
+            priority: 1,
+            description: 'Show premium customization for premium users',
+          },
+        ],
 
         // Discount field visible when user has discount code
-        discount_field: [{
-          condition: { '$ref': 'has_discount_code' },
-          action: { set: { target: 'discount_field.isVisible', value: true } },
-          priority: 1
-        }],
-
-        // Calculate base total price  
-        base_total: [{
-          condition: { '==': [1, 1] }, // Always true
-          action: {
-            calculate: {
-              target: 'base_total.calculatedValue',
-              formula: {
-                '+': [
-                  { var: ['product.value.base_price'] },
-                  { var: ['shipping_cost.value'] }
-                ]
-              }
-            }
+        discount_field: [
+          {
+            condition: { $ref: 'has_discount_code' },
+            action: { set: { target: 'discount_field.isVisible', value: true } },
+            priority: 1,
           },
-          priority: 1,
-          description: 'Calculate base total'
-        }],
+        ],
+
+        // Calculate base total price
+        base_total: [
+          {
+            condition: { '==': [1, 1] }, // Always true
+            action: {
+              calculate: {
+                target: 'base_total.calculatedValue',
+                formula: {
+                  '+': [{ var: ['product.value.base_price'] }, { var: ['shipping_cost.value'] }],
+                },
+              },
+            },
+            priority: 1,
+            description: 'Calculate base total',
+          },
+        ],
 
         // Calculate final total price with discount
-        total_price: [{
-          condition: { '==': [1, 1] }, // Always true
-          action: {
-            calculate: {
-              target: 'total_price.calculatedValue',
-              formula: {
-                if: [
-                  {
-                    and: [
-                      { '$ref': 'has_discount_code' },
-                      { '>': [{ var: ['discount_percentage.value'] }, 0] }
-                    ]
-                  },
-                  {
-                    '*': [
-                      { var: ['base_total.calculatedValue'] },
-                      { '-': [1, { '/': [{ var: ['discount_percentage.value'] }, 100] }] }
-                    ]
-                  },
-                  { var: ['base_total.calculatedValue'] }
-                ]
-              }
-            }
+        total_price: [
+          {
+            condition: { '==': [1, 1] }, // Always true
+            action: {
+              calculate: {
+                target: 'total_price.calculatedValue',
+                formula: {
+                  if: [
+                    {
+                      and: [
+                        { $ref: 'has_discount_code' },
+                        { '>': [{ var: ['discount_percentage.value'] }, 0] },
+                      ],
+                    },
+                    {
+                      '*': [
+                        { var: ['base_total.calculatedValue'] },
+                        { '-': [1, { '/': [{ var: ['discount_percentage.value'] }, 100] }] },
+                      ],
+                    },
+                    { var: ['base_total.calculatedValue'] },
+                  ],
+                },
+              },
+            },
+            priority: 1,
+            description: 'Calculate final total with optional discount',
           },
-          priority: 1,
-          description: 'Calculate final total with optional discount'
-        }],
+        ],
 
         // Express shipping for high-value orders
-        express_shipping: [{
-          condition: { '>': [{ var: ['total_price.calculatedValue'] }, 100] },
-          action: { set: { target: 'express_shipping.isVisible', value: true } },
-          priority: 1,
-          description: 'Show express shipping for orders over $100'
-        }]
+        express_shipping: [
+          {
+            condition: { '>': [{ var: ['total_price.calculatedValue'] }, 100] },
+            action: { set: { target: 'express_shipping.isVisible', value: true } },
+            priority: 1,
+            description: 'Show express shipping for orders over $100',
+          },
+        ],
       };
 
       engine.registerSharedRules(sharedRules);
@@ -110,13 +119,12 @@ describe('Integration Tests', () => {
         user: { tier: 'premium' },
         product: {
           category: 'clothing',
-          base_price: 80
+          base_price: 80,
         },
         discount_code: 'SAVE20',
         discount_percentage: 20,
-        shipping_cost: 10
+        shipping_cost: 10,
       });
-
 
       // Evaluate all fields
       const sizeSelector = engine.evaluateField('size_selector');
@@ -136,47 +144,55 @@ describe('Integration Tests', () => {
 
     test('should handle dependency cascade updates', () => {
       const ruleSet: RuleSet = {
-        shipping_cost: [{
-          condition: { '==': [{ var: ['shipping_method.value'] }, 'express'] },
-          action: { set: { target: 'shipping_cost.calculatedValue', value: 25 } },
-          priority: 1
-        }, {
-          condition: { '==': [{ var: ['shipping_method.value'] }, 'standard'] },
-          action: { set: { target: 'shipping_cost.calculatedValue', value: 5 } },
-          priority: 2
-        }, {
-          condition: { '==': [{ var: ['shipping_method.value'] }, 'free'] },
-          action: { set: { target: 'shipping_cost.calculatedValue', value: 0 } },
-          priority: 3
-        }],
-
-        total_cost: [{
-          condition: { '==': [1, 1] },
-          action: {
-            calculate: {
-              target: 'total_cost.calculatedValue',
-              formula: {
-                '+': [
-                  { var: ['product_price.value'] },
-                  { var: ['shipping_cost.calculatedValue'] }
-                ]
-              }
-            }
+        shipping_cost: [
+          {
+            condition: { '==': [{ var: ['shipping_method.value'] }, 'express'] },
+            action: { set: { target: 'shipping_cost.calculatedValue', value: 25 } },
+            priority: 1,
           },
-          priority: 1
-        }],
+          {
+            condition: { '==': [{ var: ['shipping_method.value'] }, 'standard'] },
+            action: { set: { target: 'shipping_cost.calculatedValue', value: 5 } },
+            priority: 2,
+          },
+          {
+            condition: { '==': [{ var: ['shipping_method.value'] }, 'free'] },
+            action: { set: { target: 'shipping_cost.calculatedValue', value: 0 } },
+            priority: 3,
+          },
+        ],
 
-        free_shipping_notice: [{
-          condition: { '==': [{ var: ['shipping_cost.calculatedValue'] }, 0] },
-          action: { set: { target: 'free_shipping_notice.isVisible', value: true } },
-          priority: 1
-        }]
+        total_cost: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              calculate: {
+                target: 'total_cost.calculatedValue',
+                formula: {
+                  '+': [
+                    { var: ['product_price.value'] },
+                    { var: ['shipping_cost.calculatedValue'] },
+                  ],
+                },
+              },
+            },
+            priority: 1,
+          },
+        ],
+
+        free_shipping_notice: [
+          {
+            condition: { '==': [{ var: ['shipping_cost.calculatedValue'] }, 0] },
+            action: { set: { target: 'free_shipping_notice.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
       engine.updateFieldValue({
         product_price: 50,
-        shipping_method: 'express'
+        shipping_method: 'express',
       });
 
       // Evaluate initial state
@@ -214,8 +230,8 @@ describe('Integration Tests', () => {
         },
         onFieldStateCreation: () => ({
           errorMessage: '',
-          isValid: true
-        })
+          isValid: true,
+        }),
       });
     });
 
@@ -226,18 +242,20 @@ describe('Integration Tests', () => {
           {
             condition: { '!=': [{ var: ['email.value'] }, ''] },
             action: { set: { target: 'email_field.isRequired', value: false } },
-            priority: 1
+            priority: 1,
           },
           {
             condition: {
               and: [
                 { '!=': [{ var: ['email.value'] }, ''] },
-                { '!=': [{ var: ['email.value'] }, null] }
-              ]
+                { '!=': [{ var: ['email.value'] }, null] },
+              ],
             },
-            action: { trigger: { event: 'validate_email', params: { email: { var: ['email.value'] } } } },
-            priority: 2
-          }
+            action: {
+              trigger: { event: 'validate_email', params: { email: { var: ['email.value'] } } },
+            },
+            priority: 2,
+          },
         ],
 
         // Password confirmation visibility
@@ -245,8 +263,8 @@ describe('Integration Tests', () => {
           {
             condition: { '!=': [{ var: ['password.value'] }, ''] },
             action: { set: { target: 'password_confirm.isVisible', value: true } },
-            priority: 1
-          }
+            priority: 1,
+          },
         ],
 
         // Password validation (separate field to avoid circular dependency)
@@ -256,47 +274,51 @@ describe('Integration Tests', () => {
               and: [
                 { '!=': [{ var: ['password.value'] }, ''] },
                 { '!=': [{ var: ['password_confirm_input.value'] }, ''] },
-                { '!=': [{ var: ['password_confirm_input.value'] }, { var: ['password.value'] }] }
-              ]
+                { '!=': [{ var: ['password_confirm_input.value'] }, { var: ['password.value'] }] },
+              ],
             },
             action: {
               batch: [
                 { set: { target: 'password_confirm.isValid', value: false } },
-                { set: { target: 'password_confirm.errorMessage', value: 'Passwords do not match' } }
-              ]
+                {
+                  set: { target: 'password_confirm.errorMessage', value: 'Passwords do not match' },
+                },
+              ],
             },
-            priority: 1
+            priority: 1,
           },
           {
             condition: {
               and: [
                 { '!=': [{ var: ['password.value'] }, ''] },
                 { '!=': [{ var: ['password_confirm_input.value'] }, ''] },
-                { '==': [{ var: ['password_confirm_input.value'] }, { var: ['password.value'] }] }
-              ]
+                { '==': [{ var: ['password_confirm_input.value'] }, { var: ['password.value'] }] },
+              ],
             },
             action: {
               batch: [
                 { set: { target: 'password_confirm.isValid', value: true } },
-                { set: { target: 'password_confirm.errorMessage', value: '' } }
-              ]
+                { set: { target: 'password_confirm.errorMessage', value: '' } },
+              ],
             },
-            priority: 2
-          }
+            priority: 2,
+          },
         ],
 
         // Submit button
-        submit_button: [{
-          condition: {
-            and: [
-              { '!=': [{ var: ['email.value'] }, ''] },
-              { '!=': [{ var: ['password.value'] }, ''] },
-              { '==': [{ var: ['password_confirm.isValid'] }, true] }
-            ]
+        submit_button: [
+          {
+            condition: {
+              and: [
+                { '!=': [{ var: ['email.value'] }, ''] },
+                { '!=': [{ var: ['password.value'] }, ''] },
+                { '==': [{ var: ['password_confirm.isValid'] }, true] },
+              ],
+            },
+            action: { set: { target: 'submit_button.isVisible', value: true } },
+            priority: 1,
           },
-          action: { set: { target: 'submit_button.isVisible', value: true } },
-          priority: 1
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -347,10 +369,10 @@ describe('Integration Tests', () => {
         table: [
           { id: 'dev001', name: 'Knee Brace', bilateral: true, category: 'orthotic' },
           { id: 'dev002', name: 'Ankle Support', bilateral: false, category: 'orthotic' },
-          { id: 'dev003', name: 'Prosthetic Leg', bilateral: false, category: 'prosthetic' }
+          { id: 'dev003', name: 'Prosthetic Leg', bilateral: false, category: 'prosthetic' },
         ],
         primaryKey: 'id',
-        name: 'devices'
+        name: 'devices',
       };
 
       engine.registerLookupTables([deviceTable]);
@@ -358,35 +380,42 @@ describe('Integration Tests', () => {
 
     test('should handle lookup-based configurations', () => {
       const ruleSet: RuleSet = {
-        bilateral_option: [{
-          condition: { '==': [{ varTable: ['selected_device@devices.bilateral'] }, true] },
-          action: { set: { target: 'bilateral_option.isVisible', value: true } },
-          priority: 1,
-          description: 'Show bilateral option for bilateral devices'
-        }, {
-          condition: { '!=': [{ varTable: ['selected_device@devices.bilateral'] }, true] },
-          action: { set: { target: 'bilateral_option.isVisible', value: false } },
-          priority: 2,
-          description: 'Hide bilateral option for non-bilateral devices'
-        }],
-
-        prosthetic_options: [{
-          condition: { '==': [{ varTable: ['selected_device@devices.category'] }, 'prosthetic'] },
-          action: { set: { target: 'prosthetic_options.isVisible', value: true } },
-          priority: 1,
-          description: 'Show prosthetic-specific options'
-        }],
-
-        device_name_display: [{
-          condition: { '!=': [{ var: ['selected_device.value'] }, null] },
-          action: {
-            calculate: {
-              target: 'device_name_display.calculatedValue',
-              formula: { varTable: ['selected_device@devices.name'] }
-            }
+        bilateral_option: [
+          {
+            condition: { '==': [{ varTable: ['selected_device@devices.bilateral'] }, true] },
+            action: { set: { target: 'bilateral_option.isVisible', value: true } },
+            priority: 1,
+            description: 'Show bilateral option for bilateral devices',
           },
-          priority: 1
-        }]
+          {
+            condition: { '!=': [{ varTable: ['selected_device@devices.bilateral'] }, true] },
+            action: { set: { target: 'bilateral_option.isVisible', value: false } },
+            priority: 2,
+            description: 'Hide bilateral option for non-bilateral devices',
+          },
+        ],
+
+        prosthetic_options: [
+          {
+            condition: { '==': [{ varTable: ['selected_device@devices.category'] }, 'prosthetic'] },
+            action: { set: { target: 'prosthetic_options.isVisible', value: true } },
+            priority: 1,
+            description: 'Show prosthetic-specific options',
+          },
+        ],
+
+        device_name_display: [
+          {
+            condition: { '!=': [{ var: ['selected_device.value'] }, null] },
+            action: {
+              calculate: {
+                target: 'device_name_display.calculatedValue',
+                formula: { varTable: ['selected_device@devices.name'] },
+              },
+            },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -425,22 +454,26 @@ describe('Integration Tests', () => {
 
       // Register a custom operator that counts evaluations
       const resolver = engine['logicResolver'];
-      resolver.registerCustomLogic([{
-        operator: 'track_eval',
-        operand: (args) => {
-          evaluationCount++;
-          return args[0];
-        }
-      }]);
+      resolver.registerCustomLogic([
+        {
+          operator: 'track_eval',
+          operand: (args) => {
+            evaluationCount++;
+            return args[0];
+          },
+        },
+      ]);
     });
 
     test('should cache evaluation results', () => {
       const ruleSet: RuleSet = {
-        cached_field: [{
-          condition: { track_eval: [{ var: ['trigger.value'] }] },
-          action: { set: { target: 'cached_field.isVisible', value: true } },
-          priority: 1
-        }]
+        cached_field: [
+          {
+            condition: { track_eval: [{ var: ['trigger.value'] }] },
+            action: { set: { target: 'cached_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);

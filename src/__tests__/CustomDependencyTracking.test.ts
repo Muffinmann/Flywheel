@@ -1,6 +1,9 @@
 import { RuleEngine } from '../RuleEngine.js';
 import { DependencyInfo } from '../DependencyGraph.js';
-import { CustomLogicDependencyVisitor, CustomActionDependencyVisitor } from '../DependencyVisitor.js';
+import {
+  CustomLogicDependencyVisitor,
+  CustomActionDependencyVisitor,
+} from '../DependencyVisitor.js';
 
 describe('Custom Dependency Tracking', () => {
   let ruleEngine: RuleEngine;
@@ -18,31 +21,38 @@ describe('Custom Dependency Tracking', () => {
             // This custom action reads from source and writes to target
             return {
               dependencies: payload.source ? [payload.source] : [],
-              dependents: payload.target ? [payload.target] : []
+              dependents: payload.target ? [payload.target] : [],
             };
           }
           return { dependencies: [], dependents: [] };
-        }
+        },
       };
 
+      interface CustomSetPayload {
+        source: string;
+        target: string;
+      }
+
       // Register custom action with dependency visitor
-      ruleEngine.registerActionHandler({
+      ruleEngine.registerActionHandler<CustomSetPayload>({
         actionType: 'customSet',
         handler: (payload, context) => {
           // Custom action implementation
           const value = context[payload.source];
           context[payload.target] = value;
         },
-        dependencyVisitor: customActionVisitor
+        dependencyVisitor: customActionVisitor,
       });
 
       // Load rules that use the custom action
       const ruleSet = {
-        field3: [{
-          condition: { "==": [{ var: "field1" }, "trigger"] },
-          action: { customSet: { source: "field2", target: "field3" } } as any,
-          priority: 1
-        }]
+        field3: [
+          {
+            condition: { '==': [{ var: 'field1' }, 'trigger'] },
+            action: { customSet: { source: 'field2', target: 'field3' } } as any,
+            priority: 1,
+          },
+        ],
       };
 
       ruleEngine.loadRuleSet(ruleSet);
@@ -50,7 +60,7 @@ describe('Custom Dependency Tracking', () => {
       // Check dependency graph
       const field3Dependencies = ruleEngine['dependencyGraph'].getDependencies('field3');
       const field2Dependents = ruleEngine['dependencyGraph'].getDependents('field2');
-      
+
       expect(field3Dependencies).toContain('field1');
       expect(field3Dependencies).toContain('field2');
       expect(field2Dependents).toContain('field3');
@@ -63,28 +73,35 @@ describe('Custom Dependency Tracking', () => {
             // Merge action reads from multiple sources and writes to target
             return {
               dependencies: payload.sources || [],
-              dependents: payload.target ? [payload.target] : []
+              dependents: payload.target ? [payload.target] : [],
             };
           }
           return { dependencies: [], dependents: [] };
-        }
+        },
       };
 
-      ruleEngine.registerActionHandler({
+      interface MergePayload {
+        sources: string[];
+        target: string;
+      }
+
+      ruleEngine.registerActionHandler<MergePayload>({
         actionType: 'merge',
         handler: (payload, context) => {
           const merged = payload.sources.map((s: string) => context[s]).join('');
           context[payload.target] = merged;
         },
-        dependencyVisitor: customActionVisitor
+        dependencyVisitor: customActionVisitor,
       });
 
       const ruleSet = {
-        result: [{
-          condition: { "==": [{ var: "trigger" }, true] },
-          action: { merge: { sources: ["field1", "field2", "field3"], target: "result" } } as any,
-          priority: 1
-        }]
+        result: [
+          {
+            condition: { '==': [{ var: 'trigger' }, true] },
+            action: { merge: { sources: ['field1', 'field2', 'field3'], target: 'result' } } as any,
+            priority: 1,
+          },
+        ],
       };
 
       ruleEngine.loadRuleSet(ruleSet);
@@ -109,11 +126,11 @@ describe('Custom Dependency Tracking', () => {
             const [field1, field2] = operands;
             return {
               dependencies: [field1, field2],
-              dependents: []
+              dependents: [],
             };
           }
           return { dependencies: [], dependents: [] };
-        }
+        },
       };
 
       // Register custom logic with dependency visitor
@@ -123,16 +140,18 @@ describe('Custom Dependency Tracking', () => {
           const [field1, field2] = args;
           return context[field1] === context[field2];
         },
-        dependencyVisitor: customLogicVisitor
+        dependencyVisitor: customLogicVisitor,
       });
 
       // Load rules that use the custom logic
       const ruleSet = {
-        output: [{
-          condition: { compareFields: ["fieldA", "fieldB"] },
-          action: { set: { target: "output", value: "matched" } },
-          priority: 1
-        }]
+        output: [
+          {
+            condition: { compareFields: ['fieldA', 'fieldB'] },
+            action: { set: { target: 'output', value: 'matched' } },
+            priority: 1,
+          },
+        ],
       };
 
       ruleEngine.loadRuleSet(ruleSet);
@@ -150,11 +169,11 @@ describe('Custom Dependency Tracking', () => {
             // This operator sums multiple field values
             return {
               dependencies: operands,
-              dependents: []
+              dependents: [],
             };
           }
           return { dependencies: [], dependents: [] };
-        }
+        },
       };
 
       ruleEngine.registerCustomLogic({
@@ -162,15 +181,17 @@ describe('Custom Dependency Tracking', () => {
         handler: (args, context) => {
           return args.reduce((sum: number, field: string) => sum + (context[field] || 0), 0);
         },
-        dependencyVisitor: customLogicVisitor
+        dependencyVisitor: customLogicVisitor,
       });
 
       const ruleSet = {
-        total: [{
-          condition: { ">": [{ sumFields: ["val1", "val2", "val3"] }, 100] },
-          action: { set: { target: "total", value: "high" } },
-          priority: 1
-        }]
+        total: [
+          {
+            condition: { '>': [{ sumFields: ['val1', 'val2', 'val3'] }, 100] },
+            action: { set: { target: 'total', value: 'high' } },
+            priority: 1,
+          },
+        ],
       };
 
       ruleEngine.loadRuleSet(ruleSet);
@@ -190,11 +211,11 @@ describe('Custom Dependency Tracking', () => {
           if (operator === 'hasValue') {
             return {
               dependencies: [operands[0]],
-              dependents: []
+              dependents: [],
             };
           }
           return { dependencies: [], dependents: [] };
-        }
+        },
       };
 
       // Custom action visitor
@@ -203,11 +224,11 @@ describe('Custom Dependency Tracking', () => {
           if (actionType === 'transform') {
             return {
               dependencies: [payload.source],
-              dependents: [payload.target]
+              dependents: [payload.target],
             };
           }
           return { dependencies: [], dependents: [] };
-        }
+        },
       };
 
       ruleEngine.registerCustomLogic({
@@ -215,23 +236,30 @@ describe('Custom Dependency Tracking', () => {
         handler: (args, context) => {
           return context[args[0]] !== null && context[args[0]] !== undefined;
         },
-        dependencyVisitor: logicVisitor
+        dependencyVisitor: logicVisitor,
       });
 
-      ruleEngine.registerActionHandler({
+      interface TransformPayload {
+        source: string;
+        target: string;
+      }
+
+      ruleEngine.registerActionHandler<TransformPayload>({
         actionType: 'transform',
         handler: (payload, context) => {
           context[payload.target] = String(context[payload.source]).toUpperCase();
         },
-        dependencyVisitor: actionVisitor
+        dependencyVisitor: actionVisitor,
       });
 
       const ruleSet = {
-        transformed: [{
-          condition: { hasValue: ["input"] },
-          action: { transform: { source: "input", target: "transformed" } } as any,
-          priority: 1
-        }]
+        transformed: [
+          {
+            condition: { hasValue: ['input'] },
+            action: { transform: { source: 'input', target: 'transformed' } } as any,
+            priority: 1,
+          },
+        ],
       };
 
       ruleEngine.loadRuleSet(ruleSet);
@@ -251,48 +279,57 @@ describe('Custom Dependency Tracking', () => {
           if (actionType === 'concat') {
             return {
               dependencies: payload.sources || [],
-              dependents: [payload.target]
+              dependents: [payload.target],
             };
           }
           return { dependencies: [], dependents: [] };
-        }
+        },
       };
 
-      ruleEngine.registerActionHandler({
+      interface ConcatPayload {
+        sources: string[];
+        target: string;
+      }
+
+      ruleEngine.registerActionHandler<ConcatPayload>({
         actionType: 'concat',
         handler: (payload, context, helpers) => {
-          const result = payload.sources.map((s: string) => {
-            // Get field value from context
-            const fieldState = context[s];
-            return (fieldState && fieldState.value) || '';
-          }).join('');
+          const result = payload.sources
+            .map((s: string) => {
+              // Get field value from context
+              const fieldState = context[s] as any;
+              return (fieldState && fieldState.value) || '';
+            })
+            .join('');
           // Use the onFieldPropertySet callback to update the field
           helpers?.onFieldPropertySet?.(payload.target + '.value', result);
         },
-        dependencyVisitor: actionVisitor
+        dependencyVisitor: actionVisitor,
       });
 
       const ruleSet = {
-        fullName: [{
-          condition: true,
-          action: { concat: { sources: ["firstName", "lastName"], target: "fullName" } } as any,
-          priority: 1
-        }]
+        fullName: [
+          {
+            condition: true,
+            action: { concat: { sources: ['firstName', 'lastName'], target: 'fullName' } } as any,
+            priority: 1,
+          },
+        ],
       };
 
       ruleEngine.loadRuleSet(ruleSet);
 
       // Set initial values
-      ruleEngine.updateFieldValue({ firstName: "John", lastName: "Doe" });
-      const result1 = ruleEngine.evaluateField("fullName");
-      expect(result1.value).toBe("JohnDoe");
+      ruleEngine.updateFieldValue({ firstName: 'John', lastName: 'Doe' });
+      const result1 = ruleEngine.evaluateField('fullName');
+      expect(result1.value).toBe('JohnDoe');
 
       // Update a dependency and check invalidation
-      const invalidatedFields = ruleEngine.updateFieldValue({ firstName: "Jane" });
+      const invalidatedFields = ruleEngine.updateFieldValue({ firstName: 'Jane' });
       expect(invalidatedFields).toContain('fullName');
 
-      const result2 = ruleEngine.evaluateField("fullName");
-      expect(result2.value).toBe("JaneDoe");
+      const result2 = ruleEngine.evaluateField('fullName');
+      expect(result2.value).toBe('JaneDoe');
     });
   });
 });

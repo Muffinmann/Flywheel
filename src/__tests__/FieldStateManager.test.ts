@@ -15,7 +15,7 @@ describe('FieldStateManager', () => {
 
     test('should create instance with custom options', () => {
       const customOptions: FieldStateManagerOptions = {
-        onFieldStateCreation: () => ({ customProp: 'value' })
+        onFieldStateCreation: () => ({ customProp: 'value' }),
       };
       const manager = new FieldStateManager(customOptions);
       expect(manager).toBeInstanceOf(FieldStateManager);
@@ -30,12 +30,12 @@ describe('FieldStateManager', () => {
   describe('Default Field State Creation', () => {
     test('should create default field state with correct properties', () => {
       const defaultState = fieldStateManager.createDefaultFieldState();
-      
+
       expect(defaultState).toEqual({
         value: undefined,
         isVisible: false,
         isRequired: false,
-        calculatedValue: undefined
+        calculatedValue: undefined,
       });
     });
 
@@ -44,13 +44,13 @@ describe('FieldStateManager', () => {
         onFieldStateCreation: () => ({
           customProperty: 'customValue',
           readOnly: true,
-          priority: 10
-        })
+          priority: 10,
+        }),
       };
-      
+
       const manager = new FieldStateManager(customOptions);
       const defaultState = manager.createDefaultFieldState();
-      
+
       expect(defaultState).toEqual({
         value: undefined,
         isVisible: false,
@@ -58,7 +58,7 @@ describe('FieldStateManager', () => {
         calculatedValue: undefined,
         customProperty: 'customValue',
         readOnly: true,
-        priority: 10
+        priority: 10,
       });
     });
 
@@ -66,13 +66,13 @@ describe('FieldStateManager', () => {
       const customOptions: FieldStateManagerOptions = {
         onFieldStateCreation: () => ({
           isVisible: true, // Override default
-          customProp: 'test'
-        })
+          customProp: 'test',
+        }),
       };
-      
+
       const manager = new FieldStateManager(customOptions);
       const defaultState = manager.createDefaultFieldState();
-      
+
       expect(defaultState.isVisible).toBe(true);
       expect(defaultState.isRequired).toBe(false);
       expect(defaultState.customProp).toBe('test');
@@ -83,12 +83,12 @@ describe('FieldStateManager', () => {
     describe('ensureFieldState', () => {
       test('should create new field state if field does not exist', () => {
         const fieldState = fieldStateManager.ensureFieldState('newField');
-        
+
         expect(fieldState).toEqual({
           value: undefined,
           isVisible: false,
           isRequired: false,
-          calculatedValue: undefined
+          calculatedValue: undefined,
         });
       });
 
@@ -97,10 +97,10 @@ describe('FieldStateManager', () => {
         const initialState = fieldStateManager.ensureFieldState('existingField');
         initialState.value = 'testValue';
         initialState.isVisible = true;
-        
+
         // Get the same field state again
         const retrievedState = fieldStateManager.ensureFieldState('existingField');
-        
+
         expect(retrievedState).toBe(initialState);
         expect(retrievedState.value).toBe('testValue');
         expect(retrievedState.isVisible).toBe(true);
@@ -112,10 +112,10 @@ describe('FieldStateManager', () => {
           'field_with_underscores',
           'field.with.dots',
           'field123',
-          'UPPERCASE_FIELD'
+          'UPPERCASE_FIELD',
         ];
-        
-        specialFieldNames.forEach(fieldName => {
+
+        specialFieldNames.forEach((fieldName) => {
           const fieldState = fieldStateManager.ensureFieldState(fieldName);
           expect(fieldState).toBeDefined();
           expect(fieldState.isVisible).toBe(false);
@@ -138,7 +138,7 @@ describe('FieldStateManager', () => {
       test('should return field state for existing field', () => {
         fieldStateManager.ensureFieldState('testField');
         const fieldState = fieldStateManager.getFieldState('testField');
-        
+
         expect(fieldState).toBeDefined();
         expect(fieldState!.isVisible).toBe(false);
         expect(fieldState!.isRequired).toBe(false);
@@ -148,7 +148,7 @@ describe('FieldStateManager', () => {
         const originalState = fieldStateManager.ensureFieldState('modifiedField');
         originalState.value = 'modified';
         originalState.isVisible = true;
-        
+
         const retrievedState = fieldStateManager.getFieldState('modifiedField');
         expect(retrievedState!.value).toBe('modified');
         expect(retrievedState!.isVisible).toBe(true);
@@ -162,12 +162,12 @@ describe('FieldStateManager', () => {
           isVisible: true,
           isRequired: true,
           calculatedValue: 'calculated',
-          customProp: 'custom'
+          customProp: 'custom',
         };
-        
+
         fieldStateManager.setFieldState('newField', newState);
         const retrievedState = fieldStateManager.getFieldState('newField');
-        
+
         expect(retrievedState).toEqual(newState);
       });
 
@@ -177,17 +177,17 @@ describe('FieldStateManager', () => {
         const initialState = fieldStateManager.getFieldState('existingField')!;
         initialState.value = 'initial';
         initialState.customProp = 'initial';
-        
+
         // Replace with new state
         const newState: FieldState = {
           value: 'replaced',
           isVisible: true,
-          isRequired: false
+          isRequired: false,
         };
-        
+
         fieldStateManager.setFieldState('existingField', newState);
         const replacedState = fieldStateManager.getFieldState('existingField');
-        
+
         expect(replacedState).toEqual(newState);
         expect(replacedState!.customProp).toBeUndefined();
       });
@@ -199,12 +199,12 @@ describe('FieldStateManager', () => {
           isRequired: false,
           calculatedValue: 100,
           metadata: { source: 'api' },
-          permissions: { read: true, write: false }
+          permissions: { read: true, write: false },
         };
-        
+
         fieldStateManager.setFieldState('richField', stateWithExtras);
         const retrievedState = fieldStateManager.getFieldState('richField');
-        
+
         expect(retrievedState).toEqual(stateWithExtras);
         expect(retrievedState!.metadata.source).toBe('api');
         expect(retrievedState!.permissions.write).toBe(false);
@@ -218,7 +218,7 @@ describe('FieldStateManager', () => {
         fieldStateManager.ensureFieldState('testField');
         fieldStateManager.setFieldProperty('testField.value', 'testValue');
         fieldStateManager.setFieldProperty('testField.isVisible', true);
-        
+
         expect(fieldStateManager.getFieldProperty('testField.value')).toBe('testValue');
         expect(fieldStateManager.getFieldProperty('testField.isVisible')).toBe(true);
         expect(fieldStateManager.getFieldProperty('testField.isRequired')).toBe(false);
@@ -228,30 +228,34 @@ describe('FieldStateManager', () => {
         fieldStateManager.ensureFieldState('userField');
         fieldStateManager.setFieldProperty('userField.profile.name', 'John Doe');
         fieldStateManager.setFieldProperty('userField.permissions.admin', true);
-        
+
         expect(fieldStateManager.getFieldProperty('userField.profile.name')).toBe('John Doe');
         expect(fieldStateManager.getFieldProperty('userField.permissions.admin')).toBe(true);
       });
 
       test('should return undefined for non-existent nested properties', () => {
         fieldStateManager.ensureFieldState('testField');
-        
+
         expect(fieldStateManager.getFieldProperty('testField.nonExistent')).toBeUndefined();
-        expect(fieldStateManager.getFieldProperty('testField.nested.deep.property')).toBeUndefined();
+        expect(
+          fieldStateManager.getFieldProperty('testField.nested.deep.property')
+        ).toBeUndefined();
       });
 
       test('should handle deeply nested property paths', () => {
         fieldStateManager.ensureFieldState('deepField');
         fieldStateManager.setFieldProperty('deepField.level1.level2.level3.value', 'deep');
-        
-        expect(fieldStateManager.getFieldProperty('deepField.level1.level2.level3.value')).toBe('deep');
+
+        expect(fieldStateManager.getFieldProperty('deepField.level1.level2.level3.value')).toBe(
+          'deep'
+        );
       });
 
       test('should throw error for invalid path format', () => {
         expect(() => {
           fieldStateManager.getFieldProperty('invalidPath');
         }).toThrow('Invalid path format: invalidPath. Expected format: "fieldName.property"');
-        
+
         expect(() => {
           fieldStateManager.getFieldProperty('');
         }).toThrow('Invalid path format: . Expected format: "fieldName.property"');
@@ -262,9 +266,11 @@ describe('FieldStateManager', () => {
         const fieldState = fieldStateManager.getFieldState('nullField')!;
         fieldState.nullProp = null;
         fieldState.undefinedProp = undefined;
-        
+
         expect(fieldStateManager.getFieldProperty('nullField.nullProp.nested')).toBeUndefined();
-        expect(fieldStateManager.getFieldProperty('nullField.undefinedProp.nested')).toBeUndefined();
+        expect(
+          fieldStateManager.getFieldProperty('nullField.undefinedProp.nested')
+        ).toBeUndefined();
       });
     });
 
@@ -273,7 +279,7 @@ describe('FieldStateManager', () => {
         fieldStateManager.setFieldProperty('newField.value', 'setValue');
         fieldStateManager.setFieldProperty('newField.isVisible', true);
         fieldStateManager.setFieldProperty('newField.isRequired', true);
-        
+
         const fieldState = fieldStateManager.getFieldState('newField')!;
         expect(fieldState.value).toBe('setValue');
         expect(fieldState.isVisible).toBe(true);
@@ -284,15 +290,17 @@ describe('FieldStateManager', () => {
         fieldStateManager.setFieldProperty('complexField.user.profile.name', 'Jane Doe');
         fieldStateManager.setFieldProperty('complexField.user.profile.age', 30);
         fieldStateManager.setFieldProperty('complexField.permissions.read', true);
-        
-        expect(fieldStateManager.getFieldProperty('complexField.user.profile.name')).toBe('Jane Doe');
+
+        expect(fieldStateManager.getFieldProperty('complexField.user.profile.name')).toBe(
+          'Jane Doe'
+        );
         expect(fieldStateManager.getFieldProperty('complexField.user.profile.age')).toBe(30);
         expect(fieldStateManager.getFieldProperty('complexField.permissions.read')).toBe(true);
       });
 
       test('should create intermediate objects for nested paths', () => {
         fieldStateManager.setFieldProperty('autoField.deep.nested.value', 'created');
-        
+
         const fieldState = fieldStateManager.getFieldState('autoField')!;
         expect(fieldState.deep).toBeDefined();
         expect(fieldState.deep.nested).toBeDefined();
@@ -302,7 +310,7 @@ describe('FieldStateManager', () => {
       test('should overwrite existing properties', () => {
         fieldStateManager.setFieldProperty('overwriteField.value', 'original');
         fieldStateManager.setFieldProperty('overwriteField.value', 'overwritten');
-        
+
         expect(fieldStateManager.getFieldProperty('overwriteField.value')).toBe('overwritten');
       });
 
@@ -314,9 +322,9 @@ describe('FieldStateManager', () => {
           { path: 'typeField.array', value: [1, 2, 3] },
           { path: 'typeField.object', value: { key: 'value' } },
           { path: 'typeField.null', value: null },
-          { path: 'typeField.undefined', value: undefined }
+          { path: 'typeField.undefined', value: undefined },
         ];
-        
+
         testValues.forEach(({ path, value }) => {
           fieldStateManager.setFieldProperty(path, value);
           expect(fieldStateManager.getFieldProperty(path)).toEqual(value);
@@ -327,7 +335,7 @@ describe('FieldStateManager', () => {
         expect(() => {
           fieldStateManager.setFieldProperty('invalidPath', 'value');
         }).toThrow('Invalid path format: invalidPath. Expected format: "fieldName.property"');
-        
+
         expect(() => {
           fieldStateManager.setFieldProperty('', 'value');
         }).toThrow('Invalid path format: . Expected format: "fieldName.property"');
@@ -336,10 +344,10 @@ describe('FieldStateManager', () => {
       test('should replace non-object intermediate values', () => {
         // Set initial primitive value
         fieldStateManager.setFieldProperty('replaceField.primitive', 'text');
-        
+
         // Try to set nested property - should replace primitive with object
         fieldStateManager.setFieldProperty('replaceField.primitive.nested', 'value');
-        
+
         expect(fieldStateManager.getFieldProperty('replaceField.primitive.nested')).toBe('value');
         expect(typeof fieldStateManager.getFieldProperty('replaceField.primitive')).toBe('object');
       });
@@ -365,7 +373,7 @@ describe('FieldStateManager', () => {
     describe('initializeField', () => {
       test('should initialize field without initial state', () => {
         fieldStateManager.initializeField('basicField');
-        
+
         expect(fieldStateManager.isFieldInitialized('basicField')).toBe(true);
         const fieldState = fieldStateManager.getFieldState('basicField');
         expect(fieldState).toBeDefined();
@@ -377,11 +385,11 @@ describe('FieldStateManager', () => {
         const initialState = {
           value: 'initialValue',
           isVisible: true,
-          customProp: 'custom'
+          customProp: 'custom',
         };
-        
+
         fieldStateManager.initializeField('fieldWithState', initialState);
-        
+
         expect(fieldStateManager.isFieldInitialized('fieldWithState')).toBe(true);
         const fieldState = fieldStateManager.getFieldState('fieldWithState')!;
         expect(fieldState.value).toBe('initialValue');
@@ -394,7 +402,7 @@ describe('FieldStateManager', () => {
         // First initialization
         fieldStateManager.initializeField('onceField', { value: 'first' });
         expect(fieldStateManager.getFieldProperty('onceField.value')).toBe('first');
-        
+
         // Second initialization attempt
         fieldStateManager.initializeField('onceField', { value: 'second' });
         expect(fieldStateManager.getFieldProperty('onceField.value')).toBe('first'); // Unchanged
@@ -405,13 +413,13 @@ describe('FieldStateManager', () => {
         fieldStateManager.ensureFieldState('mergeField');
         fieldStateManager.setFieldProperty('mergeField.value', 'existing');
         fieldStateManager.setFieldProperty('mergeField.isVisible', true);
-        
+
         // Initialize with additional state
         fieldStateManager.initializeField('mergeField', {
           isRequired: true,
-          customProp: 'added'
+          customProp: 'added',
         });
-        
+
         expect(fieldStateManager.isFieldInitialized('mergeField')).toBe(true);
         const fieldState = fieldStateManager.getFieldState('mergeField')!;
         expect(fieldState.value).toBe('existing');
@@ -422,7 +430,7 @@ describe('FieldStateManager', () => {
 
       test('should handle initialization with empty state object', () => {
         fieldStateManager.initializeField('emptyStateField', {});
-        
+
         expect(fieldStateManager.isFieldInitialized('emptyStateField')).toBe(true);
         const fieldState = fieldStateManager.getFieldState('emptyStateField')!;
         expect(fieldState.isVisible).toBe(false);
@@ -440,30 +448,30 @@ describe('FieldStateManager', () => {
     test('should build context with single field', () => {
       fieldStateManager.setFieldProperty('singleField.value', 'test');
       fieldStateManager.setFieldProperty('singleField.isVisible', true);
-      
+
       const context = fieldStateManager.buildEvaluationContext();
-      
+
       expect(context).toEqual({
         singleField: {
           value: 'test',
           isVisible: true,
           isRequired: false,
-          calculatedValue: undefined
-        }
+          calculatedValue: undefined,
+        },
       });
     });
 
     test('should build context with multiple fields', () => {
       fieldStateManager.setFieldProperty('field1.value', 'value1');
       fieldStateManager.setFieldProperty('field1.isVisible', true);
-      
+
       fieldStateManager.setFieldProperty('field2.value', 'value2');
       fieldStateManager.setFieldProperty('field2.isRequired', true);
-      
+
       fieldStateManager.setFieldProperty('field3.calculatedValue', 100);
-      
+
       const context = fieldStateManager.buildEvaluationContext();
-      
+
       expect(context.field1.value).toBe('value1');
       expect(context.field1.isVisible).toBe(true);
       expect(context.field2.value).toBe('value2');
@@ -476,9 +484,9 @@ describe('FieldStateManager', () => {
       fieldStateManager.setFieldProperty('complexField.value', { nested: 'object' });
       fieldStateManager.setFieldProperty('complexField.metadata.source', 'api');
       fieldStateManager.setFieldProperty('complexField.permissions.read', true);
-      
+
       const context = fieldStateManager.buildEvaluationContext();
-      
+
       expect(context.complexField.value.nested).toBe('object');
       expect(context.complexField.metadata.source).toBe('api');
       expect(context.complexField.permissions.read).toBe(true);
@@ -486,13 +494,13 @@ describe('FieldStateManager', () => {
 
     test('should reflect current field states in context', () => {
       fieldStateManager.setFieldProperty('dynamicField.value', 'initial');
-      
+
       let context = fieldStateManager.buildEvaluationContext();
       expect(context.dynamicField.value).toBe('initial');
-      
+
       // Update field
       fieldStateManager.setFieldProperty('dynamicField.value', 'updated');
-      
+
       context = fieldStateManager.buildEvaluationContext();
       expect(context.dynamicField.value).toBe('updated');
     });
@@ -505,16 +513,16 @@ describe('FieldStateManager', () => {
       fieldStateManager.setFieldProperty('field2.value', 'test2');
       fieldStateManager.initializeField('field1');
       fieldStateManager.initializeField('field2');
-      
+
       // Verify setup
       expect(fieldStateManager.getFieldState('field1')).toBeDefined();
       expect(fieldStateManager.getFieldState('field2')).toBeDefined();
       expect(fieldStateManager.isFieldInitialized('field1')).toBe(true);
       expect(fieldStateManager.isFieldInitialized('field2')).toBe(true);
-      
+
       // Clear all
       fieldStateManager.clearAll();
-      
+
       // Verify cleared
       expect(fieldStateManager.getFieldState('field1')).toBeUndefined();
       expect(fieldStateManager.getFieldState('field2')).toBeUndefined();
@@ -527,11 +535,11 @@ describe('FieldStateManager', () => {
       // Set up and clear
       fieldStateManager.setFieldProperty('tempField.value', 'temp');
       fieldStateManager.clearAll();
-      
+
       // Add new fields after clear
       fieldStateManager.setFieldProperty('newField.value', 'new');
       fieldStateManager.initializeField('newField');
-      
+
       expect(fieldStateManager.getFieldProperty('newField.value')).toBe('new');
       expect(fieldStateManager.isFieldInitialized('newField')).toBe(true);
     });
@@ -546,7 +554,7 @@ describe('FieldStateManager', () => {
     test('should handle numeric property names', () => {
       fieldStateManager.setFieldProperty('arrayField.0', 'first');
       fieldStateManager.setFieldProperty('arrayField.1.nested', 'second');
-      
+
       expect(fieldStateManager.getFieldProperty('arrayField.0')).toBe('first');
       expect(fieldStateManager.getFieldProperty('arrayField.1.nested')).toBe('second');
     });
@@ -554,7 +562,7 @@ describe('FieldStateManager', () => {
     test('should handle special characters in property paths', () => {
       fieldStateManager.setFieldProperty('field.prop-with-hyphens', 'hyphen');
       fieldStateManager.setFieldProperty('field.prop_with_underscores', 'underscore');
-      
+
       expect(fieldStateManager.getFieldProperty('field.prop-with-hyphens')).toBe('hyphen');
       expect(fieldStateManager.getFieldProperty('field.prop_with_underscores')).toBe('underscore');
     });
@@ -568,12 +576,12 @@ describe('FieldStateManager', () => {
     test('should handle concurrent field operations', () => {
       // Simulate concurrent operations on same field
       const fieldName = 'concurrentField';
-      
+
       fieldStateManager.ensureFieldState(fieldName);
       fieldStateManager.setFieldProperty(`${fieldName}.prop1`, 'value1');
       fieldStateManager.setFieldProperty(`${fieldName}.prop2`, 'value2');
       fieldStateManager.initializeField(fieldName, { prop3: 'value3' });
-      
+
       const fieldState = fieldStateManager.getFieldState(fieldName)!;
       expect(fieldState.prop1).toBe('value1');
       expect(fieldState.prop2).toBe('value2');
@@ -586,30 +594,30 @@ describe('FieldStateManager', () => {
       expect(() => {
         fieldStateManager.setFieldState('nullField', nullState);
       }).not.toThrow();
-      
+
       expect(fieldStateManager.getFieldState('nullField')).toBeNull();
     });
 
     test('should handle undefined values in nested property setting', () => {
       fieldStateManager.setFieldProperty('undefinedField.value', undefined);
       fieldStateManager.setFieldProperty('undefinedField.nested.deep', undefined);
-      
+
       expect(fieldStateManager.getFieldProperty('undefinedField.value')).toBeUndefined();
       expect(fieldStateManager.getFieldProperty('undefinedField.nested.deep')).toBeUndefined();
     });
 
     test('should maintain field state integrity during complex operations', () => {
       const fieldName = 'integrityField';
-      
+
       // Create initial state
       fieldStateManager.ensureFieldState(fieldName);
       const initialState = fieldStateManager.getFieldState(fieldName);
-      
+
       // Perform various operations
       fieldStateManager.setFieldProperty(`${fieldName}.value`, 'test');
       fieldStateManager.setFieldProperty(`${fieldName}.nested.prop`, 'nested');
       fieldStateManager.initializeField(fieldName, { initialized: true });
-      
+
       // Verify state integrity
       const finalState = fieldStateManager.getFieldState(fieldName)!;
       expect(finalState).toBe(initialState); // Same object reference
@@ -626,12 +634,12 @@ describe('FieldStateManager', () => {
       const customManager = new FieldStateManager({
         onFieldStateCreation: () => ({
           customDefault: 'custom',
-          isVisible: true
-        })
+          isVisible: true,
+        }),
       });
-      
+
       const fieldState = customManager.ensureFieldState('customField');
-      
+
       expect(fieldState.customDefault).toBe('custom');
       expect(fieldState.isVisible).toBe(true);
       expect(fieldState.isRequired).toBe(false);
@@ -641,13 +649,13 @@ describe('FieldStateManager', () => {
       const customManager = new FieldStateManager({
         onFieldStateCreation: () => ({
           defaultValue: 'auto-generated',
-          readOnly: false
-        })
+          readOnly: false,
+        }),
       });
-      
+
       customManager.setFieldProperty('autoField.value', 'set');
       const fieldState = customManager.getFieldState('autoField')!;
-      
+
       expect(fieldState.value).toBe('set');
       expect(fieldState.defaultValue).toBe('auto-generated');
       expect(fieldState.readOnly).toBe(false);
@@ -658,22 +666,22 @@ describe('FieldStateManager', () => {
         onFieldStateCreation: (props) => ({
           metadata: {
             createdAt: new Date('2023-01-01'),
-            version: 1
+            version: 1,
           },
           permissions: {
             read: true,
             write: true,
-            delete: false
+            delete: false,
           },
           validation: {
             required: false,
-            pattern: null
-          }
-        })
+            pattern: null,
+          },
+        }),
       });
-      
+
       const fieldState = customManager.ensureFieldState('complexField');
-      
+
       expect(fieldState.metadata.createdAt).toEqual(new Date('2023-01-01'));
       expect(fieldState.metadata.version).toBe(1);
       expect(fieldState.permissions.read).toBe(true);

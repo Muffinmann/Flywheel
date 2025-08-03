@@ -56,21 +56,18 @@ describe('Edge Cases and Error Handling', () => {
         data: {
           users: [
             { id: 1, scores: [85, 90, 78] },
-            { id: 2, scores: [92, 88, 95] }
-          ]
-        }
+            { id: 2, scores: [92, 88, 95] },
+          ],
+        },
       };
 
       const logic = {
         some: [
           { var: ['data.users'] },
           {
-            some: [
-              { var: ['$.scores'] },
-              { '>': [{ var: ['$'] }, 90] }
-            ]
-          }
-        ]
+            some: [{ var: ['$.scores'] }, { '>': [{ var: ['$'] }, 90] }],
+          },
+        ],
       };
 
       expect(resolver.resolve(logic, context)).toBe(true);
@@ -80,12 +77,14 @@ describe('Edge Cases and Error Handling', () => {
       const circularContext: any = { self: null };
       circularContext.self = circularContext;
 
-      resolver.registerCustomLogic([{
-        operator: 'access_circular',
-        operand: (args, context) => {
-          return context.self === context;
-        }
-      }]);
+      resolver.registerCustomLogic([
+        {
+          operator: 'access_circular',
+          operand: (args, context) => {
+            return context.self === context;
+          },
+        },
+      ]);
 
       expect(resolver.resolve({ access_circular: [] }, circularContext)).toBe(true);
     });
@@ -111,11 +110,13 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle rules with no matching conditions', () => {
       const ruleSet: RuleSet = {
-        test_field: [{
-          condition: { '==': [1, 2] }, // Always false
-          action: { set: { target: 'test_field.isVisible', value: true } },
-          priority: 1
-        }]
+        test_field: [
+          {
+            condition: { '==': [1, 2] }, // Always false
+            action: { set: { target: 'test_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -135,11 +136,13 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle malformed action targets', () => {
       const ruleSet: RuleSet = {
-        malformed_field: [{
-          condition: { '==': [1, 1] },
-          action: { set: { target: 'malformed_field', value: true } }, // Missing property
-          priority: 1
-        }]
+        malformed_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: { set: { target: 'malformed_field', value: true } }, // Missing property
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -152,11 +155,13 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle deeply nested target paths', () => {
       const ruleSet: RuleSet = {
-        nested_field: [{
-          condition: { '==': [1, 1] },
-          action: { set: { target: 'nested_field.deeply.nested.property', value: 'test' } },
-          priority: 1
-        }]
+        nested_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: { set: { target: 'nested_field.deeply.nested.property', value: 'test' } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -168,11 +173,13 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle rapid field updates', () => {
       const ruleSet: RuleSet = {
-        reactive_field: [{
-          condition: { '>': [{ var: ['counter.value'] }, 5] },
-          action: { set: { target: 'reactive_field.isVisible', value: true } },
-          priority: 1
-        }]
+        reactive_field: [
+          {
+            condition: { '>': [{ var: ['counter.value'] }, 5] },
+            action: { set: { target: 'reactive_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -192,11 +199,13 @@ describe('Edge Cases and Error Handling', () => {
 
       // Generate 1000 fields with rules
       for (let i = 0; i < 1000; i++) {
-        ruleSet[`field_${i}`] = [{
-          condition: { '==': [{ var: ['trigger.value'] }, i] },
-          action: { set: { target: `field_${i}.isVisible`, value: true } },
-          priority: 1
-        }];
+        ruleSet[`field_${i}`] = [
+          {
+            condition: { '==': [{ var: ['trigger.value'] }, i] },
+            action: { set: { target: `field_${i}.isVisible`, value: true } },
+            priority: 1,
+          },
+        ];
       }
 
       engine.loadRuleSet(ruleSet);
@@ -208,16 +217,20 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle concurrent field evaluations', () => {
       const ruleSet: RuleSet = {
-        field1: [{
-          condition: { '==': [{ var: ['shared_var.value'] }, 'trigger'] },
-          action: { set: { target: 'field1.isVisible', value: true } },
-          priority: 1
-        }],
-        field2: [{
-          condition: { '==': [{ var: ['shared_var.value'] }, 'trigger'] },
-          action: { set: { target: 'field2.isVisible', value: true } },
-          priority: 1
-        }]
+        field1: [
+          {
+            condition: { '==': [{ var: ['shared_var.value'] }, 'trigger'] },
+            action: { set: { target: 'field1.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field2: [
+          {
+            condition: { '==': [{ var: ['shared_var.value'] }, 'trigger'] },
+            action: { set: { target: 'field2.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -236,15 +249,17 @@ describe('Edge Cases and Error Handling', () => {
         actionType: 'error_action',
         handler: () => {
           throw new Error('Custom action error');
-        }
+        },
       });
 
       const ruleSet: RuleSet = {
-        error_field: [{
-          condition: { '==': [1, 1] },
-          action: { error_action: { data: 'test' } } as any,
-          priority: 1
-        }]
+        error_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: { error_action: { data: 'test' } } as any,
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -256,11 +271,15 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle memory pressure with many evaluations', () => {
       const ruleSet: RuleSet = {
-        memory_field: [{
-          condition: { '>': [{ var: ['counter.value'] }, 0] },
-          action: { set: { target: 'memory_field.calculatedValue', value: { var: ['counter.value'] } } },
-          priority: 1
-        }]
+        memory_field: [
+          {
+            condition: { '>': [{ var: ['counter.value'] }, 0] },
+            action: {
+              set: { target: 'memory_field.calculatedValue', value: { var: ['counter.value'] } },
+            },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -289,11 +308,13 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should detect direct circular dependencies', () => {
       const ruleSet: RuleSet = {
-        field_a: [{
-          condition: { '==': [{ var: ['field_a.value'] }, 'trigger'] },
-          action: { set: { target: 'field_a.isVisible', value: true } },
-          priority: 1
-        }]
+        field_a: [
+          {
+            condition: { '==': [{ var: ['field_a.value'] }, 'trigger'] },
+            action: { set: { target: 'field_a.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -303,21 +324,27 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should detect indirect circular dependencies', () => {
       const ruleSet: RuleSet = {
-        field_a: [{
-          condition: { '==': [{ var: ['field_b.value'] }, 'trigger'] },
-          action: { set: { target: 'field_a.isVisible', value: true } },
-          priority: 1
-        }],
-        field_b: [{
-          condition: { '==': [{ var: ['field_c.value'] }, 'trigger'] },
-          action: { set: { target: 'field_b.isVisible', value: true } },
-          priority: 1
-        }],
-        field_c: [{
-          condition: { '==': [{ var: ['field_a.value'] }, 'trigger'] },
-          action: { set: { target: 'field_c.isVisible', value: true } },
-          priority: 1
-        }]
+        field_a: [
+          {
+            condition: { '==': [{ var: ['field_b.value'] }, 'trigger'] },
+            action: { set: { target: 'field_a.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field_b: [
+          {
+            condition: { '==': [{ var: ['field_c.value'] }, 'trigger'] },
+            action: { set: { target: 'field_b.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field_c: [
+          {
+            condition: { '==': [{ var: ['field_a.value'] }, 'trigger'] },
+            action: { set: { target: 'field_c.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -327,16 +354,20 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should detect cycles in action dependencies', () => {
       const ruleSet: RuleSet = {
-        field_a: [{
-          condition: { '==': [1, 1] },
-          action: { copy: { source: 'field_b', target: 'field_a.calculatedValue' } },
-          priority: 1
-        }],
-        field_b: [{
-          condition: { '==': [1, 1] },
-          action: { copy: { source: 'field_a', target: 'field_b.calculatedValue' } },
-          priority: 1
-        }]
+        field_a: [
+          {
+            condition: { '==': [1, 1] },
+            action: { copy: { source: 'field_b', target: 'field_a.calculatedValue' } },
+            priority: 1,
+          },
+        ],
+        field_b: [
+          {
+            condition: { '==': [1, 1] },
+            action: { copy: { source: 'field_a', target: 'field_b.calculatedValue' } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -346,21 +377,27 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should allow non-circular complex dependencies', () => {
       const ruleSet: RuleSet = {
-        field_a: [{
-          condition: { '==': [{ var: ['input1.value'] }, 'trigger'] },
-          action: { set: { target: 'field_a.isVisible', value: true } },
-          priority: 1
-        }],
-        field_b: [{
-          condition: { '==': [{ var: ['field_a.isVisible'] }, true] },
-          action: { set: { target: 'field_b.isVisible', value: true } },
-          priority: 1
-        }],
-        field_c: [{
-          condition: { '==': [{ var: ['field_b.isVisible'] }, true] },
-          action: { set: { target: 'field_c.isVisible', value: true } },
-          priority: 1
-        }]
+        field_a: [
+          {
+            condition: { '==': [{ var: ['input1.value'] }, 'trigger'] },
+            action: { set: { target: 'field_a.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field_b: [
+          {
+            condition: { '==': [{ var: ['field_a.isVisible'] }, true] },
+            action: { set: { target: 'field_b.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
+        field_c: [
+          {
+            condition: { '==': [{ var: ['field_b.isVisible'] }, true] },
+            action: { set: { target: 'field_c.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -378,11 +415,13 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle missing shared rules gracefully', () => {
       const ruleSet: RuleSet = {
-        test_field: [{
-          condition: { '$ref': 'missing_shared_rule' },
-          action: { set: { target: 'test_field.isVisible', value: true } },
-          priority: 1
-        }]
+        test_field: [
+          {
+            condition: { $ref: 'missing_shared_rule' },
+            action: { set: { target: 'test_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -402,16 +441,18 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle invalid lookup table references', () => {
       const ruleSet: RuleSet = {
-        lookup_field: [{
-          condition: { '==': [1, 1] },
-          action: {
-            calculate: {
-              target: 'lookup_field.value',
-              formula: { varTable: ['field@missing_table.property'] }
-            }
+        lookup_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: {
+              calculate: {
+                target: 'lookup_field.value',
+                formula: { varTable: ['field@missing_table.property'] },
+              },
+            },
+            priority: 1,
           },
-          priority: 1
-        }]
+        ],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -424,7 +465,7 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle empty rule priority conflicts validation', () => {
       const ruleSet: RuleSet = {
-        empty_field: []
+        empty_field: [],
       };
 
       engine.loadRuleSet(ruleSet);
@@ -443,11 +484,13 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle rules with no dependencies', () => {
       const ruleSet: RuleSet = {
-        standalone_field: [{
-          condition: { '==': [1, 1] },
-          action: { set: { target: 'standalone_field.isVisible', value: true } },
-          priority: 1
-        }]
+        standalone_field: [
+          {
+            condition: { '==': [1, 1] },
+            action: { set: { target: 'standalone_field.isVisible', value: true } },
+            priority: 1,
+          },
+        ],
       };
 
       expect(() => {
@@ -457,32 +500,34 @@ describe('Edge Cases and Error Handling', () => {
 
     test('should handle deeply nested logic in dependency extraction', () => {
       const ruleSet: RuleSet = {
-        complex_field: [{
-          condition: {
-            if: [
-              {
-                and: [
-                  { '==': [{ var: ['level1.value'] }, 'value'] },
-                  {
-                    or: [
-                      { '>': [{ var: ['level2.count'] }, 0] },
-                      {
-                        some: [
-                          { var: ['level3.items'] },
-                          { '==': [{ var: ['$.level4.prop'] }, 'target'] }
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              },
-              'result1',
-              'result2'
-            ]
+        complex_field: [
+          {
+            condition: {
+              if: [
+                {
+                  and: [
+                    { '==': [{ var: ['level1.value'] }, 'value'] },
+                    {
+                      or: [
+                        { '>': [{ var: ['level2.count'] }, 0] },
+                        {
+                          some: [
+                            { var: ['level3.items'] },
+                            { '==': [{ var: ['$.level4.prop'] }, 'target'] },
+                          ],
+                        },
+                      ],
+                    },
+                  ],
+                },
+                'result1',
+                'result2',
+              ],
+            },
+            action: { set: { target: 'complex_field.isVisible', value: true } },
+            priority: 1,
           },
-          action: { set: { target: 'complex_field.isVisible', value: true } },
-          priority: 1
-        }]
+        ],
       };
 
       expect(() => {
@@ -493,15 +538,15 @@ describe('Edge Cases and Error Handling', () => {
     test('should handle malformed folder names edge cases', () => {
       expect(() => {
         RuleManagement.validateFolderStructure('');
-      }).toThrow("is missing __ separator");
+      }).toThrow('is missing __ separator');
 
       expect(() => {
         RuleManagement.validateFolderStructure('__');
-      }).toThrow("has empty name or id parts");
+      }).toThrow('has empty name or id parts');
 
       expect(() => {
         RuleManagement.validateFolderStructure('a____b');
-      }).toThrow("should have exactly one __ separator");
+      }).toThrow('should have exactly one __ separator');
     });
   });
 
@@ -523,11 +568,13 @@ describe('Edge Cases and Error Handling', () => {
           condition = { '==': [{ var: [`field_${i - 1}.isVisible`] }, true] };
         }
 
-        ruleSet[fieldName] = [{
-          condition: condition,
-          action: { set: { target: `${fieldName}.isVisible`, value: true } },
-          priority: 1
-        }];
+        ruleSet[fieldName] = [
+          {
+            condition: condition,
+            action: { set: { target: `${fieldName}.isVisible`, value: true } },
+            priority: 1,
+          },
+        ];
       }
 
       engine.loadRuleSet(ruleSet);
