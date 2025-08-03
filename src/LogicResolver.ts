@@ -9,13 +9,13 @@
  *  "operand": [3, 10]
  * }
  * ```
- * 
+ *
  * For convenience, we ignore the key "operator" and "operand" since they are same as a key-value pair.
  * So, the rule above can be re-written as:
  * ```json
  * {"<": [3, 10]}
  * ```
- * 
+ *
  * Much simpler, isn't it?
  * In real cases, a logic is usually dependent on some context value, this value can be reference like this:
  * ```json
@@ -23,10 +23,10 @@
  *   "<":[
  *      {"var": "user_input_field"},
  *      10
- *  ] 
+ *  ]
  * }
  * ```
- * 
+ *
  * As you may observe, logic can be nested infinitely in the "operand" and they will be resolved recursively
  * starting from deepest node. In this case, the resolver first read the value of reference, and then compare
  * it with the number 10.
@@ -35,12 +35,12 @@
  * ```json
  * {"var": "form_object.field_a"}
  * ```
- * 
+ *
  * As you may have guessed it, array element can be accessed via index:
  * ```json
  * {"var": "array_input.1"}
  * ```
- * 
+ *
  * Since it is common to have some operations on an array, this resolver also support following syntax:
  * ```json
  * {
@@ -50,13 +50,13 @@
  *   ]
  * }
  * ```
- * 
+ *
  * Here the operator "some" is one kind of array operations. Its first operand MUST be an array or a reference to an array.
  * Its second operand is the operation on each element, where you can use the pattern `{"var": "$"}` to refer to the iterated element
- * in this array. 
+ * in this array.
  * You may also refer to properties of the array element using paths like: {"var": "$.field.subfield.0"}, where $ acts as the base for the current iterated item.
  * Other supported array operations include: "every" and "map".
- * 
+ *
  * Conditions can be defined using "if" operator, where the first operand is the condition, and the other two are the corresponding outcomes,
  * for example, if you want to express the logic "if user_weight > 60 then 'truthy result', else 'falsy result'", it can be written as:
  * ```
@@ -68,14 +68,14 @@
  *  ]
  * }
  * ```
- * 
+ *
  * The resolver has built-in operations include the following:
  * - arithmetic operations: "+", "-", "*", "/"
  * - JS built-in math operations: "sqrt", "floor", "abs", ...etc.
  * - comparisons: ">", "<", "<=", ">=", "==", "!=", ...etc, equality are compared strictly!
  * - array operations: "some", "every", "map"
  * - conditional operations: "if", "and", "or"
- * 
+ *
  * You can also register custom logic via:
  * ```ts
  * function custom_function_reference(args: any[], context: any) {}
@@ -83,12 +83,12 @@
  *  {
  *    "operator": "my_custom_operator",
  *    "operand": custom_function_reference
- *  } 
+ *  }
  * ]
  * const resolver = new LogicResolver()
- * 
+ *
  * resolver.registerCustomLogic(customLogic)
- * 
+ *
  * const contextValue = {
  *  field_a: "val_a",
  *  field_b: "val_b",
@@ -142,7 +142,7 @@ export class LogicResolver {
         operator: 'root',
         operands: [logic],
         result: result,
-        children: [trace]
+        children: [trace],
       };
       return { result, trace: rootTrace };
     }
@@ -161,7 +161,7 @@ export class LogicResolver {
     }
 
     if (Array.isArray(logic)) {
-      return logic.map(item => this.evaluateLogic(item, context));
+      return logic.map((item) => this.evaluateLogic(item, context));
     }
 
     const entries = Object.entries(logic);
@@ -171,7 +171,7 @@ export class LogicResolver {
 
     const [operator, operands] = entries[0];
     const resolvedOperands = Array.isArray(operands)
-      ? operands.map(op => this.evaluateLogic(op, context))
+      ? operands.map((op) => this.evaluateLogic(op, context))
       : [this.evaluateLogic(operands, context)];
 
     if (trace) {
@@ -182,7 +182,12 @@ export class LogicResolver {
     return this.executeOperation(operator, resolvedOperands, context, operands);
   }
 
-  private executeOperation(operator: string, operands: any[], context: any, originalOperands?: any): any {
+  private executeOperation(
+    operator: string,
+    operands: any[],
+    context: any,
+    originalOperands?: any
+  ): any {
     if (this.customLogic.has(operator)) {
       return this.customLogic.get(operator)!(operands, context);
     }
@@ -195,8 +200,10 @@ export class LogicResolver {
       // Arithmetic operations
       case '+':
         // Handle string concatenation vs numeric addition
-        if (operands.length === 0) return 0;
-        if (operands.some(op => typeof op === 'string')) {
+        if (operands.length === 0) {
+          return 0;
+        }
+        if (operands.some((op) => typeof op === 'string')) {
           return operands.reduce((acc, val) => String(acc) + String(val), '');
         }
         return operands.reduce((acc, val) => acc + val, 0);
@@ -244,24 +251,33 @@ export class LogicResolver {
       // Array operations
       case 'some':
         const someArray = operands[0];
-        const someCondition = originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
-        if (!someCondition || !Array.isArray(someArray)) return false;
+        const someCondition =
+          originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
+        if (!someCondition || !Array.isArray(someArray)) {
+          return false;
+        }
         return someArray.some((item: any) =>
-          this.evaluateLogic(someCondition, { ...context, '$': item })
+          this.evaluateLogic(someCondition, { ...context, $: item })
         );
       case 'every':
         const everyArray = operands[0];
-        const everyCondition = originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
-        if (!everyCondition || !Array.isArray(everyArray)) return true;
+        const everyCondition =
+          originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
+        if (!everyCondition || !Array.isArray(everyArray)) {
+          return true;
+        }
         return everyArray.every((item: any) =>
-          this.evaluateLogic(everyCondition, { ...context, '$': item })
+          this.evaluateLogic(everyCondition, { ...context, $: item })
         );
       case 'map':
         const mapArray = operands[0];
-        const mapExpression = originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
-        if (!mapExpression || !Array.isArray(mapArray)) return [];
+        const mapExpression =
+          originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
+        if (!mapExpression || !Array.isArray(mapArray)) {
+          return [];
+        }
         return mapArray.map((item: any) =>
-          this.evaluateLogic(mapExpression, { ...context, '$': item })
+          this.evaluateLogic(mapExpression, { ...context, $: item })
         );
 
       default:

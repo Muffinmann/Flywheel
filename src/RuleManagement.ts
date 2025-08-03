@@ -94,8 +94,8 @@
  *  - circular field dependencies
  */
 
-import { RuleSet } from './DependencyGraph.js';
-import { Logic } from './LogicResolver.js';
+import type { RuleSet } from './DependencyGraph.js';
+import type { Logic } from './LogicResolver.js';
 
 export interface CompiledRuleSet {
   fields: RuleSet;
@@ -117,7 +117,9 @@ export interface RuleFile {
 
 export class RuleManagement {
   static compileRules(rulesDirectory: string): { ruleSetMap: RuleSetMap; idPathMap: IdPathMap } {
-    throw new Error('RuleManagement.compileRules should be called from Node.js environment with file system access');
+    throw new Error(
+      'RuleManagement.compileRules should be called from Node.js environment with file system access'
+    );
   }
 
   static validateRuleStructure(ruleSet: RuleSet): void {
@@ -127,7 +129,7 @@ export class RuleManagement {
 
     const extractDependencies = (logic: Logic): string[] => {
       const deps: string[] = [];
-      
+
       if (typeof logic === 'object' && logic !== null && !Array.isArray(logic)) {
         for (const [operator, operands] of Object.entries(logic)) {
           if (operator === 'var') {
@@ -169,7 +171,7 @@ export class RuleManagement {
         if (ruleSet[dependency]) {
           const depDeps = new Set<string>();
           for (const rule of ruleSet[dependency]) {
-            extractDependencies(rule.condition).forEach(dep => depDeps.add(dep));
+            extractDependencies(rule.condition).forEach((dep) => depDeps.add(dep));
           }
           if (hasCycle(dependency, depDeps)) {
             return true;
@@ -183,9 +185,9 @@ export class RuleManagement {
 
     for (const [fieldName, rules] of Object.entries(ruleSet)) {
       const fieldDependencies = new Set<string>();
-      
+
       for (const rule of rules) {
-        extractDependencies(rule.condition).forEach(dep => fieldDependencies.add(dep));
+        extractDependencies(rule.condition).forEach((dep) => fieldDependencies.add(dep));
       }
 
       if (hasCycle(fieldName, fieldDependencies)) {
@@ -214,7 +216,7 @@ export class RuleManagement {
 
   static validateUniqueIds(idPathMap: IdPathMap): void {
     const seenIds = new Set<string>();
-    
+
     for (const [id, path] of Object.entries(idPathMap)) {
       if (seenIds.has(id)) {
         throw new Error(`Duplicate ID '${id}' found in rule structure`);
@@ -226,7 +228,7 @@ export class RuleManagement {
   static mergeRuleSets(parent: CompiledRuleSet | null, child: RuleFile): CompiledRuleSet {
     const result: CompiledRuleSet = {
       fields: { ...parent?.fields },
-      sharedRules: { ...parent?.sharedRules }
+      sharedRules: { ...parent?.sharedRules },
     };
 
     if (child.fields) {
@@ -248,7 +250,7 @@ export class RuleManagement {
 
   static sortRulesByPriority(ruleSet: RuleSet): RuleSet {
     const sorted: RuleSet = {};
-    
+
     for (const [fieldName, rules] of Object.entries(ruleSet)) {
       sorted[fieldName] = [...rules].sort((a, b) => a.priority - b.priority);
     }

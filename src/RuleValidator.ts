@@ -1,6 +1,5 @@
-import { FieldRule } from './DependencyGraph.js';
-import { Action } from './ActionHandler.js';
-
+import type { FieldRule } from './DependencyGraph.js';
+import type { Action } from './ActionHandler.js';
 
 export class RuleValidator {
   private extractActionTargets: (action: Action) => string[];
@@ -31,7 +30,7 @@ export class RuleValidator {
       for (const [priority, count] of priorityCounts) {
         if (count > 1) {
           throw new Error(
-            `Conflicting rules for field '${fieldName}' target '${target}' with same priority ${priority}`,
+            `Conflicting rules for field '${fieldName}' target '${target}' with same priority ${priority}`
           );
         }
       }
@@ -61,7 +60,9 @@ export class RuleValidator {
   }
 
   validateInitRules(fieldName: string, initRules: FieldRule[]): void {
-    if (initRules.length === 0) return;
+    if (initRules.length === 0) {
+      return;
+    }
 
     // Check for multiple init rules with same priority
     const priorityGroups = new Map<number, FieldRule[]>();
@@ -78,7 +79,7 @@ export class RuleValidator {
       if (rules.length > 1) {
         console.warn(
           `Field '${fieldName}' has ${rules.length} init rules with priority ${priority}. ` +
-          `Only the first matching rule will be applied.`
+            `Only the first matching rule will be applied.`
         );
       }
     }

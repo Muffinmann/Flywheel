@@ -1,5 +1,4 @@
-import { Logic, LogicResolver } from './LogicResolver.js';
-
+import type { Logic, LogicResolver } from './LogicResolver.js';
 
 export interface ActionTypes {
   set: { target: string; value: any };
@@ -11,7 +10,7 @@ export interface ActionTypes {
 }
 
 export type Action = {
-  [K in keyof ActionTypes]: { [P in K]: ActionTypes[K] }
+  [K in keyof ActionTypes]: { [P in K]: ActionTypes[K] };
 }[keyof ActionTypes];
 
 export interface ActionHandlerOptions {
@@ -19,7 +18,6 @@ export interface ActionHandlerOptions {
   onFieldPropertySet?: (target: string, value: any) => void;
   onFieldInit?: (fieldName: string, fieldState?: Record<string, any>, fieldValue?: any) => void;
 }
-
 
 export class ActionHandler {
   private actionHandlers: Map<string, (payload: any, context: any) => void> = new Map();
@@ -75,7 +73,10 @@ export class ActionHandler {
     });
   }
 
-  registerActionHandler(actionType: string, handler: (payload: any, context: any, helpers?: ActionHandlerOptions) => void): void {
+  registerActionHandler(
+    actionType: string,
+    handler: (payload: any, context: any, helpers?: ActionHandlerOptions) => void
+  ): void {
     // Check if handler expects the helpers parameter by checking its length
     if (handler.length >= 3) {
       // Handler expects helpers, wrap it to pass the options

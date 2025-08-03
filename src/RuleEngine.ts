@@ -1,12 +1,19 @@
-import { Logic, LogicResolver } from './LogicResolver';
-import { ActionHandler, Action, ActionHandlerOptions } from './ActionHandler';
-import { DependencyGraph, RuleSet } from './DependencyGraph';
-import { FieldStateManager, FieldState } from './FieldStateManager';
+import type { Logic } from './LogicResolver';
+import { LogicResolver } from './LogicResolver';
+import type { Action, ActionHandlerOptions } from './ActionHandler';
+import { ActionHandler } from './ActionHandler';
+import type { RuleSet } from './DependencyGraph';
+import { DependencyGraph } from './DependencyGraph';
+import type { FieldState } from './FieldStateManager';
+import { FieldStateManager } from './FieldStateManager';
 import { RuleValidator } from './RuleValidator';
 import { LookupManager } from './LookupManager';
-import { DependencyVisitor, CustomLogicDependencyVisitor, CustomActionDependencyVisitor } from './DependencyVisitor';
+import type {
+  CustomLogicDependencyVisitor,
+  CustomActionDependencyVisitor,
+} from './DependencyVisitor';
+import { DependencyVisitor } from './DependencyVisitor';
 import { CacheManager } from './CacheManager';
-
 
 /**
  * @fileoverview RuleEngine - simple rule evaluation with precise dependency tracking.
@@ -54,7 +61,7 @@ import { CacheManager } from './CacheManager';
  * ## Field Initialization
  * Fields can be initialized with default state and values using the `init` action type.
  * Init actions are processed before other rules and allow for context-aware field setup:
- * 
+ *
  * ```ts
  * {
  *   "condition": { "==": [{ "var": "user.role.value" }, "premium"] },
@@ -243,9 +250,9 @@ import { CacheManager } from './CacheManager';
  * ```
  *
  * ## Architecture
- * 
+ *
  * The RuleEngine is built with a modular architecture consisting of several key components:
- * 
+ *
  * - **FieldStateManager**: Manages field states, values, and initialization tracking
  * - **CacheManager**: Handles intelligent caching and cache invalidation
  * - **DependencyGraph**: Tracks field dependencies and manages evaluation order
@@ -298,7 +305,9 @@ export class RuleEngine {
         const dotIndex = target.indexOf('.');
 
         if (dotIndex === -1) {
-          throw new Error(`Invalid target format: ${target}. Expected format: "fieldName.property"`);
+          throw new Error(
+            `Invalid target format: ${target}. Expected format: "fieldName.property"`
+          );
         }
 
         const fieldName = target.substring(0, dotIndex);
@@ -347,24 +356,26 @@ export class RuleEngine {
     dependencyVisitor?: CustomActionDependencyVisitor;
   }): void {
     this.actionHandler.registerActionHandler(params.actionType, params.handler);
-    
+
     // Register the dependency visitor if provided
     if (params.dependencyVisitor) {
       this.dependencyVisitor.registerActionVisitor(params.actionType, params.dependencyVisitor);
     }
   }
-  
+
   registerCustomLogic(params: {
     operator: string;
     handler: (args: any[], context: any) => any;
     dependencyVisitor?: CustomLogicDependencyVisitor;
   }): void {
     // Register with LogicResolver for execution
-    this.logicResolver.registerCustomLogic([{
-      operator: params.operator,
-      operand: params.handler
-    }]);
-    
+    this.logicResolver.registerCustomLogic([
+      {
+        operator: params.operator,
+        operand: params.handler,
+      },
+    ]);
+
     // Register the dependency visitor if provided
     if (params.dependencyVisitor) {
       this.dependencyVisitor.registerLogicVisitor(params.operator, params.dependencyVisitor);
@@ -440,7 +451,7 @@ export class RuleEngine {
         const context = { ...this.buildEvaluationContext(), currentFieldName: fieldName };
         const conditionResult = this.logicResolver.resolve(
           this.resolveSharedRules(rule.condition),
-          context,
+          context
         );
 
         if (conditionResult) {
@@ -460,7 +471,7 @@ export class RuleEngine {
       const context = this.buildEvaluationContext();
       const conditionResult = this.logicResolver.resolve(
         this.resolveSharedRules(rule.condition),
-        context,
+        context
       );
 
       if (conditionResult) {
@@ -495,7 +506,8 @@ export class RuleEngine {
           : this.resolveSharedRules(value);
       }
       return resolved;
-    } if (Array.isArray(logic)) {
+    }
+    if (Array.isArray(logic)) {
       return logic.map((item) => this.resolveSharedRules(item)) as Logic;
     }
     return logic;
@@ -518,7 +530,8 @@ export class RuleEngine {
         }
       }
       return resolved;
-    } if (Array.isArray(action)) {
+    }
+    if (Array.isArray(action)) {
       return action.map((item) => this.resolveSharedRulesInAction(item));
     }
     return action;

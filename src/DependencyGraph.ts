@@ -1,6 +1,5 @@
-import { Logic } from './LogicResolver.js';
-import { Action } from './ActionHandler.js';
-
+import type { Logic } from './LogicResolver.js';
+import type { Action } from './ActionHandler.js';
 
 export interface DependencyInfo {
   dependencies: string[]; // Fields this rule reads from
@@ -30,9 +29,7 @@ export class DependencyGraph {
 
   private visitor: DependencyVisitor;
 
-  constructor(
-    visitor: DependencyVisitor,
-  ) {
+  constructor(visitor: DependencyVisitor) {
     this.visitor = visitor;
   }
 

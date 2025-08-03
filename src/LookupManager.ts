@@ -1,5 +1,4 @@
-import { LogicResolver } from './LogicResolver.js';
-
+import type { LogicResolver } from './LogicResolver.js';
 
 export interface LookupTable {
   table: any[];

@@ -1,25 +1,19 @@
-import { Logic } from './LogicResolver.js';
-import { Action } from './ActionHandler.js';
-import { DependencyVisitor as IDependencyVisitor, DependencyInfo } from './DependencyGraph.js';
+import type { Logic } from './LogicResolver.js';
+import type { Action } from './ActionHandler.js';
+import type { DependencyVisitor as IDependencyVisitor, DependencyInfo } from './DependencyGraph.js';
 
 /**
  * Interface for custom logic dependency visitors
  */
 export interface CustomLogicDependencyVisitor {
-  visitLogic(params: {
-    operator: string;
-    operands: any;
-  }): DependencyInfo;
+  visitLogic(params: { operator: string; operands: any }): DependencyInfo;
 }
 
 /**
  * Interface for custom action dependency visitors
  */
 export interface CustomActionDependencyVisitor {
-  visitAction(params: {
-    actionType: string;
-    payload: any;
-  }): DependencyInfo;
+  visitAction(params: { actionType: string; payload: any }): DependencyInfo;
 }
 
 /**
@@ -92,16 +86,19 @@ class VarOperatorHandler implements OperatorHandler {
   }
 }
 
-
 /**
  * Handler for '$ref' operator - resolves shared rule references
  */
 class RefOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
+  handle(
+    operands: string | [string],
+    visitor: DependencyVisitor,
+    visited: Set<string>
+  ): DependencyInfo {
     const refName = Array.isArray(operands) ? operands[0] : operands;
     if (visitor.getSharedRule(refName) && !visited.has(refName)) {
       visited.add(refName);
-      const info = visitor.visitLogicInternal(visitor.getSharedRule(refName)!, visited);
+      const info = visitor.visitLogicInternal(visitor.getSharedRule(refName), visited);
       visited.delete(refName);
       return info;
     }
@@ -221,7 +218,7 @@ export class DependencyVisitor implements IDependencyVisitor {
   }
 
   deduplicate(deps: string[]) {
-    return Array.from(new Set(deps))
+    return Array.from(new Set(deps));
   }
 
   visitLogicInternal(logic: Logic, visited: Set<string>): DependencyInfo {
@@ -240,7 +237,10 @@ export class DependencyVisitor implements IDependencyVisitor {
         dependencies.push(...info.dependencies);
         dependents.push(...info.dependents);
       }
-      return { dependencies: this.deduplicate(dependencies), dependents: this.deduplicate(dependents) };
+      return {
+        dependencies: this.deduplicate(dependencies),
+        dependents: this.deduplicate(dependents),
+      };
     }
 
     // Handle logic objects with operators
@@ -260,7 +260,10 @@ export class DependencyVisitor implements IDependencyVisitor {
       }
     }
 
-    return { dependencies: this.deduplicate(dependencies), dependents: this.deduplicate(dependents) };
+    return {
+      dependencies: this.deduplicate(dependencies),
+      dependents: this.deduplicate(dependents),
+    };
   }
 
   visitAction(action: Action): DependencyInfo {
