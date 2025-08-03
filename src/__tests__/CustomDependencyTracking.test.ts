@@ -19,9 +19,10 @@ describe('Custom Dependency Tracking', () => {
         visitAction: ({ actionType, payload }): DependencyInfo => {
           if (actionType === 'customSet') {
             // This custom action reads from source and writes to target
+            const customPayload = payload as { source?: string; target?: string };
             return {
-              dependencies: payload.source ? [payload.source] : [],
-              dependents: payload.target ? [payload.target] : [],
+              dependencies: customPayload.source ? [customPayload.source] : [],
+              dependents: customPayload.target ? [customPayload.target] : [],
             };
           }
           return { dependencies: [], dependents: [] };
@@ -71,9 +72,10 @@ describe('Custom Dependency Tracking', () => {
         visitAction: ({ actionType, payload }): DependencyInfo => {
           if (actionType === 'merge') {
             // Merge action reads from multiple sources and writes to target
+            const mergePayload = payload as { sources?: string[]; target?: string };
             return {
-              dependencies: payload.sources || [],
-              dependents: payload.target ? [payload.target] : [],
+              dependencies: mergePayload.sources || [],
+              dependents: mergePayload.target ? [mergePayload.target] : [],
             };
           }
           return { dependencies: [], dependents: [] };
@@ -123,7 +125,8 @@ describe('Custom Dependency Tracking', () => {
         visitLogic: ({ operator, operands }): DependencyInfo => {
           if (operator === 'compareFields') {
             // This custom operator compares two fields
-            const [field1, field2] = operands;
+            const operandArray = Array.isArray(operands) ? operands : [operands];
+            const [field1, field2] = operandArray as string[];
             return {
               dependencies: [field1, field2],
               dependents: [],
@@ -167,8 +170,11 @@ describe('Custom Dependency Tracking', () => {
         visitLogic: ({ operator, operands }): DependencyInfo => {
           if (operator === 'sumFields') {
             // This operator sums multiple field values
+            const operandArray = Array.isArray(operands)
+              ? (operands as string[])
+              : [operands as string];
             return {
-              dependencies: operands,
+              dependencies: operandArray,
               dependents: [],
             };
           }
@@ -209,8 +215,9 @@ describe('Custom Dependency Tracking', () => {
       const logicVisitor: CustomLogicDependencyVisitor = {
         visitLogic: ({ operator, operands }): DependencyInfo => {
           if (operator === 'hasValue') {
+            const operandArray = Array.isArray(operands) ? operands : [operands];
             return {
-              dependencies: [operands[0]],
+              dependencies: operandArray[0] ? [operandArray[0] as string] : [],
               dependents: [],
             };
           }
@@ -222,9 +229,10 @@ describe('Custom Dependency Tracking', () => {
       const actionVisitor: CustomActionDependencyVisitor = {
         visitAction: ({ actionType, payload }): DependencyInfo => {
           if (actionType === 'transform') {
+            const transformPayload = payload as { source?: string; target?: string };
             return {
-              dependencies: [payload.source],
-              dependents: [payload.target],
+              dependencies: transformPayload.source ? [transformPayload.source] : [],
+              dependents: transformPayload.target ? [transformPayload.target] : [],
             };
           }
           return { dependencies: [], dependents: [] };
@@ -277,9 +285,10 @@ describe('Custom Dependency Tracking', () => {
       const actionVisitor: CustomActionDependencyVisitor = {
         visitAction: ({ actionType, payload }): DependencyInfo => {
           if (actionType === 'concat') {
+            const concatPayload = payload as { sources?: string[]; target?: string };
             return {
-              dependencies: payload.sources || [],
-              dependents: [payload.target],
+              dependencies: concatPayload.sources || [],
+              dependents: concatPayload.target ? [concatPayload.target] : [],
             };
           }
           return { dependencies: [], dependents: [] };

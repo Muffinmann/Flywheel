@@ -2,25 +2,40 @@ import type { Logic } from './LogicResolver.js';
 import type { Action } from './ActionHandler.js';
 import type { DependencyVisitor as IDependencyVisitor, DependencyInfo } from './DependencyGraph.js';
 
+// Logic is just an alias for Logic since operands can be any valid Logic type
+
+/**
+ * Type for action payload based on action types
+ */
+export interface ActionPayloads {
+  set: { target: string; value: unknown };
+  copy: { source: string; target: string };
+  calculate: { target: string; formula: Logic };
+  trigger: { event: string; params?: unknown };
+  batch: Action[];
+  init: { fieldState?: Record<string, unknown>; fieldValue?: unknown };
+  [key: string]: unknown; // For custom actions
+}
+
 /**
  * Interface for custom logic dependency visitors
  */
 export interface CustomLogicDependencyVisitor {
-  visitLogic(params: { operator: string; operands: any }): DependencyInfo;
+  visitLogic(params: { operator: string; operands: Logic }): DependencyInfo;
 }
 
 /**
  * Interface for custom action dependency visitors
  */
 export interface CustomActionDependencyVisitor {
-  visitAction(params: { actionType: string; payload: any }): DependencyInfo;
+  visitAction(params: { actionType: string; payload: unknown }): DependencyInfo;
 }
 
 /**
  * Strategy interface for handling specific operators in dependency extraction
  */
 interface OperatorHandler {
-  handle(operands: any, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo;
+  handle(operands: Logic, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo;
 }
 
 /**
@@ -30,8 +45,8 @@ class DependencyUtils {
   /**
    * Normalizes operands to array format for consistent processing
    */
-  static normalizeToArray(operands: any): any[] {
-    return Array.isArray(operands) ? operands : [operands];
+  static normalizeToArray(operands: Logic): Logic[] {
+    return Array.isArray(operands) ? (operands as Logic[]) : [operands];
   }
 
   /**
@@ -73,8 +88,8 @@ class DependencyUtils {
  * Handler for 'var' operator - extracts field names from variable references
  */
 class VarOperatorHandler implements OperatorHandler {
-  handle(operands: any): DependencyInfo {
-    const path = Array.isArray(operands) ? operands[0] : operands;
+  handle(operands: Logic): DependencyInfo {
+    const path = Array.isArray(operands) ? (operands[0] as string) : (operands as string);
     if (typeof path === 'string') {
       const fieldName = DependencyUtils.extractFieldName(path);
       return {
@@ -90,17 +105,16 @@ class VarOperatorHandler implements OperatorHandler {
  * Handler for '$ref' operator - resolves shared rule references
  */
 class RefOperatorHandler implements OperatorHandler {
-  handle(
-    operands: string | [string],
-    visitor: DependencyVisitor,
-    visited: Set<string>
-  ): DependencyInfo {
-    const refName = Array.isArray(operands) ? operands[0] : operands;
-    if (visitor.getSharedRule(refName) && !visited.has(refName)) {
-      visited.add(refName);
-      const info = visitor.visitLogicInternal(visitor.getSharedRule(refName), visited);
-      visited.delete(refName);
-      return info;
+  handle(operands: Logic, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
+    const refName = Array.isArray(operands) ? (operands[0] as string) : (operands as string);
+    if (typeof refName === 'string') {
+      const sharedRule = visitor.getSharedRule(refName);
+      if (sharedRule && !visited.has(refName)) {
+        visited.add(refName);
+        const info = visitor.visitLogicInternal(sharedRule, visited);
+        visited.delete(refName);
+        return info;
+      }
     }
     return { dependencies: [], dependents: [] };
   }
@@ -110,10 +124,10 @@ class RefOperatorHandler implements OperatorHandler {
  * Handler for 'lookup' operator - extracts dependencies from lookup key expressions
  */
 class LookupOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
+  handle(operands: Logic, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
     const lookupOperands = DependencyUtils.normalizeToArray(operands);
-    if (lookupOperands.length > 1) {
-      return visitor.visitLogicInternal(lookupOperands[1], visited);
+    if (lookupOperands.length > 1 && typeof lookupOperands[1] === 'object') {
+      return visitor.visitLogicInternal(lookupOperands[1] as Logic, visited);
     }
     return { dependencies: [], dependents: [] };
   }
@@ -123,7 +137,7 @@ class LookupOperatorHandler implements OperatorHandler {
  * Handler for 'varTable' operator - extracts field names from table variable references
  */
 class VarTableOperatorHandler implements OperatorHandler {
-  handle(operands: any): DependencyInfo {
+  handle(operands: Logic): DependencyInfo {
     const operandArray = DependencyUtils.normalizeToArray(operands);
     const dependencies: string[] = [];
 
@@ -143,15 +157,17 @@ class VarTableOperatorHandler implements OperatorHandler {
  * Default handler for all other operators - recursively processes operands
  */
 class DefaultOperatorHandler implements OperatorHandler {
-  handle(operands: any, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
+  handle(operands: Logic, visitor: DependencyVisitor, visited: Set<string>): DependencyInfo {
     const operandArray = DependencyUtils.normalizeToArray(operands);
     const dependencies: string[] = [];
     const dependents: string[] = [];
 
     for (const operand of operandArray) {
-      const info = visitor.visitLogicInternal(operand, visited);
-      dependencies.push(...info.dependencies);
-      dependents.push(...info.dependents);
+      if (typeof operand === 'object' && operand !== null) {
+        const info = visitor.visitLogicInternal(operand as Logic, visited);
+        dependencies.push(...info.dependencies);
+        dependents.push(...info.dependents);
+      }
     }
     return { dependencies, dependents };
   }
@@ -185,7 +201,7 @@ export class DependencyVisitor implements IDependencyVisitor {
    * Get the appropriate handler for an operator, falling back to default handler
    */
   private getOperatorHandler(operator: string): OperatorHandler {
-    return this.operatorHandlers.get(operator) || new DefaultOperatorHandler();
+    return this.operatorHandlers.get(operator) ?? new DefaultOperatorHandler();
   }
 
   /**
@@ -217,7 +233,7 @@ export class DependencyVisitor implements IDependencyVisitor {
     return this.visitLogicInternal(logic, new Set());
   }
 
-  deduplicate(deps: string[]) {
+  private deduplicate(deps: string[]): string[] {
     return Array.from(new Set(deps));
   }
 
@@ -233,7 +249,7 @@ export class DependencyVisitor implements IDependencyVisitor {
     // Handle arrays by recursively processing each item
     if (Array.isArray(logic)) {
       for (const item of logic) {
-        const info = this.visitLogicInternal(item, visited);
+        const info = this.visitLogicInternal(item as Logic, visited);
         dependencies.push(...info.dependencies);
         dependents.push(...info.dependents);
       }
@@ -254,7 +270,7 @@ export class DependencyVisitor implements IDependencyVisitor {
       } else {
         // Fall back to built-in handlers
         const handler = this.getOperatorHandler(operator);
-        const info = handler.handle(operands, this, visited);
+        const info = handler.handle(operands as Logic, this, visited);
         dependencies.push(...info.dependencies);
         dependents.push(...info.dependents);
       }
@@ -268,7 +284,7 @@ export class DependencyVisitor implements IDependencyVisitor {
 
   visitAction(action: Action): DependencyInfo {
     const actionType = Object.keys(action)[0];
-    const payload = (action as any)[actionType];
+    const payload = action[actionType as keyof typeof action];
 
     // Check for custom action visitor first
     const customVisitor = this.customActionVisitors.get(actionType);
@@ -276,35 +292,39 @@ export class DependencyVisitor implements IDependencyVisitor {
       return customVisitor.visitAction({ actionType, payload });
     }
 
-    // Fall back to built-in action handlers
+    // Fall back to built-in action handlers with type-safe payload access
     switch (actionType) {
       case 'set': {
-        const targetField = DependencyUtils.extractFieldName(payload.target);
+        const setPayload = payload as ActionPayloads['set'];
+        const targetField = DependencyUtils.extractFieldName(setPayload.target);
         return {
           dependencies: [],
           dependents: targetField ? [targetField] : [],
         };
       }
       case 'copy': {
-        const sourceField = DependencyUtils.extractFieldName(payload.source);
-        const targetField = DependencyUtils.extractFieldName(payload.target);
+        const copyPayload = payload as ActionPayloads['copy'];
+        const sourceField = DependencyUtils.extractFieldName(copyPayload.source);
+        const targetField = DependencyUtils.extractFieldName(copyPayload.target);
         return {
           dependencies: sourceField ? [sourceField] : [],
           dependents: targetField ? [targetField] : [],
         };
       }
       case 'calculate': {
-        const targetField = DependencyUtils.extractFieldName(payload.target);
-        const formulaInfo = this.visitLogic(payload.formula);
+        const calcPayload = payload as ActionPayloads['calculate'];
+        const targetField = DependencyUtils.extractFieldName(calcPayload.target);
+        const formulaInfo = this.visitLogic(calcPayload.formula);
         return {
           dependencies: formulaInfo.dependencies,
           dependents: targetField ? [targetField] : [],
         };
       }
       case 'batch': {
+        const batchPayload = payload as ActionPayloads['batch'];
         const dependencies: string[] = [];
         const dependents: string[] = [];
-        for (const subAction of payload) {
+        for (const subAction of batchPayload) {
           const info = this.visitAction(subAction);
           dependencies.push(...info.dependencies);
           dependents.push(...info.dependents);

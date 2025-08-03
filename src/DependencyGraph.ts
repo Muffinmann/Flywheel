@@ -71,11 +71,11 @@ export class DependencyGraph {
   }
 
   getDependencies(fieldName: string): string[] {
-    return Array.from(this.dependencyGraph.get(fieldName) || []);
+    return Array.from(this.dependencyGraph.get(fieldName) ?? []);
   }
 
   getDependents(fieldName: string): string[] {
-    return Array.from(this.reverseDependencyGraph.get(fieldName) || []);
+    return Array.from(this.reverseDependencyGraph.get(fieldName) ?? []);
   }
 
   validateNoCycles(ruleSet: RuleSet): void {
@@ -93,7 +93,7 @@ export class DependencyGraph {
       visited.add(fieldName);
       recursionStack.add(fieldName);
 
-      const dependencies = this.dependencyGraph.get(fieldName) || new Set();
+      const dependencies = this.dependencyGraph.get(fieldName) ?? new Set();
       for (const dependency of dependencies) {
         if (hasCycle(dependency)) {
           return true;
@@ -118,7 +118,7 @@ export class DependencyGraph {
     // Process fields transitively - if a field is invalidated, anything depending on it should also be invalidated
     while (toProcess.length > 0) {
       const fieldName = toProcess.shift()!;
-      const dependentFields = this.reverseDependencyGraph.get(fieldName) || new Set();
+      const dependentFields = this.reverseDependencyGraph.get(fieldName) ?? new Set();
 
       for (const dependentField of dependentFields) {
         if (!invalidatedFields.has(dependentField)) {

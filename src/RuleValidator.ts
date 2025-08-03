@@ -24,7 +24,7 @@ export class RuleValidator {
     for (const [target, priorities] of targetPriorityMap) {
       const priorityCounts = new Map<number, number>();
       for (const priority of priorities) {
-        priorityCounts.set(priority, (priorityCounts.get(priority) || 0) + 1);
+        priorityCounts.set(priority, (priorityCounts.get(priority) ?? 0) + 1);
       }
 
       for (const [priority, count] of priorityCounts) {

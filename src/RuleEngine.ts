@@ -1,6 +1,6 @@
 import type { Logic } from './LogicResolver';
 import { LogicResolver } from './LogicResolver';
-import type { Action, ActionHandlerOptions } from './ActionHandler';
+import type { Action, ActionHandlerFunction } from './ActionHandler';
 import { ActionHandler } from './ActionHandler';
 import type { RuleSet } from './DependencyGraph';
 import { DependencyGraph } from './DependencyGraph';
@@ -301,7 +301,7 @@ export class RuleEngine {
 
     this.actionHandler = new ActionHandler(this.logicResolver, {
       onEvent: options.onEvent,
-      onFieldPropertySet: (target: string, value: any) => {
+      onFieldPropertySet: (target: string, value: unknown) => {
         const dotIndex = target.indexOf('.');
 
         if (dotIndex === -1) {
@@ -317,7 +317,11 @@ export class RuleEngine {
         const invalidatedFields = this.dependencyGraph.getInvalidatedFields([fieldName]);
         this.cacheManager.invalidate(invalidatedFields);
       },
-      onFieldInit: (fieldName: string, fieldState?: Record<string, any>, fieldValue?: any) => {
+      onFieldInit: (
+        fieldName: string,
+        fieldState?: Record<string, unknown>,
+        fieldValue?: unknown
+      ) => {
         this.fieldStateManager.initializeField(fieldName, fieldState);
         if (fieldValue !== undefined) {
           this.fieldStateManager.setFieldProperty(`${fieldName}.value`, fieldValue);
@@ -350,9 +354,9 @@ export class RuleEngine {
     this.lookupManager.registerLookupTables(tables);
   }
 
-  registerActionHandler(params: {
+  registerActionHandler<T = unknown>(params: {
     actionType: string;
-    handler: (payload: any, context: any, helpers?: ActionHandlerOptions) => void;
+    handler: ActionHandlerFunction<T>;
     dependencyVisitor?: CustomActionDependencyVisitor;
   }): void {
     this.actionHandler.registerActionHandler(params.actionType, params.handler);
