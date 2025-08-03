@@ -22,7 +22,7 @@ A powerful, hierarchical rule engine for dynamic field configuration using a con
 - ⚡ **Performance Optimized**: Smart caching with dependency-based invalidation
 - 🏗️ **Modular Architecture**: Separate components for field state, caching, and dependency management
 - 🚀 **Field Initialization**: Context-aware field initialization with init actions
-- 🧩 **Extensible**: Custom operators, actions, and field state properties
+- 🧩 **Extensible**: Custom operators, actions, and field state properties with dependency tracking
 - 🔍 **Debug-Friendly**: Comprehensive validation and evaluation tracing
 - 📊 **Rich Logic System**: 25+ built-in operators with unlimited nesting
 - 🏗️ **Type-Safe**: Full TypeScript support with comprehensive type definitions
@@ -148,8 +148,19 @@ registerSharedRules(sharedRules: Record<string, Logic>): void
 // Register lookup tables for data relationships
 registerLookupTables(tables: LookupTable[]): void
 
-// Register custom action types
-registerActionHandler(actionType: string, handler: Function): void
+// Register custom action types with optional dependency tracking
+registerActionHandler(params: {
+  actionType: string;
+  handler: (payload: any, context: any, helpers?: ActionHandlerOptions) => void;
+  dependencyVisitor?: CustomActionDependencyVisitor;
+}): void
+
+// Register custom logic operators with optional dependency tracking
+registerCustomLogic(params: {
+  operator: string;
+  handler: (args: any[], context: any) => any;
+  dependencyVisitor?: CustomLogicDependencyVisitor;
+}): void
 
 // Debug utilities
 getDependenciesOf(fieldName: string): string[]
@@ -329,6 +340,174 @@ engine.registerSharedRules({
     { "calculate": { target: "total.value", formula: { "+": [1, 2] } } },
     { "trigger": { event: "form_updated" } }
 ]}
+```
+
+## Custom Dependency Tracking
+
+Flywheel provides powerful dependency tracking for custom operations and actions, ensuring proper cache invalidation and evaluation order.
+
+### Dependency Visitor Interfaces
+
+```typescript
+// For custom logic operators
+interface CustomLogicDependencyVisitor {
+  visitLogic(params: {
+    operator: string;
+    operands: any;
+  }): DependencyInfo;
+}
+
+// For custom actions
+interface CustomActionDependencyVisitor {
+  visitAction(params: {
+    actionType: string;
+    payload: any;
+  }): DependencyInfo;
+}
+
+interface DependencyInfo {
+  dependencies: string[]; // Fields this operation reads from
+  dependents: string[];   // Fields this operation writes to
+}
+```
+
+### Custom Action with Dependency Tracking
+
+```typescript
+// Create a dependency visitor for a merge action
+const mergeActionVisitor: CustomActionDependencyVisitor = {
+  visitAction: ({ payload }): DependencyInfo => {
+    return {
+      dependencies: payload.sources || [], // Fields being read
+      dependents: payload.target ? [payload.target] : [] // Fields being written
+    };
+  }
+};
+
+// Register action with dependency tracking
+engine.registerActionHandler({
+  actionType: 'merge',
+  handler: (payload, context, helpers) => {
+    const result = payload.sources
+      .map(field => context[field]?.value || '')
+      .join(' ');
+    helpers?.onFieldPropertySet?.(payload.target + '.value', result);
+  },
+  dependencyVisitor: mergeActionVisitor
+});
+
+// Now the engine properly tracks dependencies
+const ruleSet = {
+  fullName: [{
+    condition: true,
+    action: { merge: { sources: ["firstName", "lastName"], target: "fullName" } } as any,
+    priority: 1
+  }]
+};
+
+engine.loadRuleSet(ruleSet);
+engine.updateFieldValue({ firstName: "John", lastName: "Doe" });
+
+// When firstName changes, fullName is automatically invalidated and re-evaluated
+const invalidated = engine.updateFieldValue({ firstName: "Jane" });
+console.log(invalidated); // includes 'fullName'
+```
+
+### Custom Logic with Dependency Tracking
+
+```typescript
+// Create a dependency visitor for a compareFields operator
+const compareFieldsVisitor: CustomLogicDependencyVisitor = {
+  visitLogic: ({ operands }): DependencyInfo => {
+    // This operator compares two field values
+    const [field1, field2] = operands;
+    return {
+      dependencies: [field1, field2], // Reads from both fields
+      dependents: [] // Logic operators don't write to fields
+    };
+  }
+};
+
+// Register logic with dependency tracking
+engine.registerCustomLogic({
+  operator: 'compareFields',
+  handler: (args, context) => {
+    const [field1, field2] = args;
+    const value1 = context[field1]?.value;
+    const value2 = context[field2]?.value;
+    return value1 === value2;
+  },
+  dependencyVisitor: compareFieldsVisitor
+});
+
+// Use in rules
+const validationRules = {
+  passwordMatch: [{
+    condition: { compareFields: ["password", "confirmPassword"] },
+    action: { set: { target: "submitButton.isVisible", value: true } },
+    priority: 1
+  }]
+};
+
+engine.loadRuleSet(validationRules);
+// submitButton now properly depends on both password and confirmPassword fields
+```
+
+### Benefits of Dependency Tracking
+
+**Automatic Cache Invalidation**: When dependencies change, dependent fields are automatically invalidated and re-evaluated.
+
+**Correct Evaluation Order**: Dependencies are resolved in the correct order, preventing stale data.
+
+**Performance Optimization**: Only affected fields are re-evaluated when changes occur.
+
+**Debug Visibility**: Use `getDependenciesOf()` to see the complete dependency graph including custom operations.
+
+```typescript
+// Debug dependency relationships
+console.log(engine.getDependenciesOf("fullName")); 
+// Output: ["firstName", "lastName"] - includes custom action dependencies
+```
+
+### Without Dependency Tracking (Problems)
+
+```typescript
+// ❌ Without dependency visitor - cache invalidation broken
+engine.registerActionHandler({
+  actionType: 'concat',
+  handler: (payload, context, helpers) => {
+    // This works, but dependency tracking is broken
+    const result = payload.sources.map(s => context[s]?.value || '').join('');
+    helpers?.onFieldPropertySet?.(payload.target + '.value', result);
+  }
+  // No dependencyVisitor provided!
+});
+
+// When firstName changes, fullName won't be invalidated
+// Leading to stale data and incorrect results
+```
+
+### With Dependency Tracking (Correct)
+
+```typescript
+// ✅ With dependency visitor - proper cache invalidation
+const concatVisitor: CustomActionDependencyVisitor = {
+  visitAction: ({ payload }) => ({
+    dependencies: payload.sources || [],
+    dependents: payload.target ? [payload.target] : []
+  })
+};
+
+engine.registerActionHandler({
+  actionType: 'concat',
+  handler: (payload, context, helpers) => {
+    const result = payload.sources.map(s => context[s]?.value || '').join('');
+    helpers?.onFieldPropertySet?.(payload.target + '.value', result);
+  },
+  dependencyVisitor: concatVisitor // ✅ Proper dependency tracking
+});
+
+// Now firstName changes correctly invalidate fullName
 ```
 
 ## Examples
@@ -596,17 +775,27 @@ const engine = new RuleEngine({
   }
 });
 
-// Register custom action
-engine.registerActionHandler('validate', (payload, context) => {
-  const { field, rules } = payload;
-  const fieldValue = engine.getFieldValue(field);
-  const isValid = validateField(fieldValue, rules);
-  
-  if (!isValid) {
-    // Trigger event through the engine's event system
-    const logicResolver = engine.getLogicResolver();
-    logicResolver.resolve({ "trigger": { event: "validation_error", params: { field } } }, context);
-  }
+// Register custom action with dependency tracking
+const validateVisitor: CustomActionDependencyVisitor = {
+  visitAction: ({ payload }) => ({
+    dependencies: payload.field ? [payload.field] : [], // Reads from the field being validated
+    dependents: [] // Validation doesn't write to fields directly
+  })
+};
+
+engine.registerActionHandler({
+  actionType: 'validate',
+  handler: (payload, context, helpers) => {
+    const { field, rules } = payload;
+    const fieldValue = engine.getFieldValue(field);
+    const isValid = validateField(fieldValue, rules);
+    
+    if (!isValid) {
+      // Trigger event through the helper system
+      helpers?.onEvent?.('validation_error', { field });
+    }
+  },
+  dependencyVisitor: validateVisitor
 });
 
 const validationRules = {
@@ -683,28 +872,42 @@ const customRules = {
 ### Custom Logic Operators
 
 ```typescript
-// Register custom operators
-const logicResolver = engine.getLogicResolver();
+// Register custom operators with dependency tracking
+const containsVisitor: CustomLogicDependencyVisitor = {
+  visitLogic: ({ operands }) => ({
+    // If first operand is a field reference, depend on it
+    dependencies: typeof operands[0] === 'string' && !operands[0].includes('.') ? [operands[0]] : [],
+    dependents: []
+  })
+};
 
-logicResolver.registerCustomLogic([
-  {
-    operator: 'contains',
-    operand: (args, context) => {
-      const [haystack, needle] = args;
-      return String(haystack).includes(String(needle));
-    }
+const currencyVisitor: CustomLogicDependencyVisitor = {
+  visitLogic: ({ operands }) => ({
+    dependencies: typeof operands[0] === 'string' ? [operands[0]] : [],
+    dependents: []
+  })
+};
+
+engine.registerCustomLogic({
+  operator: 'contains',
+  handler: (args, context) => {
+    const [haystack, needle] = args;
+    return String(haystack).includes(String(needle));
   },
-  {
-    operator: 'currency',
-    operand: (args, context) => {
-      const [amount] = args;
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD'
-      }).format(amount);
-    }
-  }
-]);
+  dependencyVisitor: containsVisitor
+});
+
+engine.registerCustomLogic({
+  operator: 'currency',
+  handler: (args, context) => {
+    const [amount] = args;
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount);
+  },
+  dependencyVisitor: currencyVisitor
+});
 
 // Use in rules
 const customLogicRules = {
@@ -753,6 +956,32 @@ try {
 engine.updateFieldValue({ age: 30, email: "test@example.com" });
 const result = engine.evaluateField("userProfile");
 expect(result.isVisible).toBe(true);
+```
+
+### Troubleshooting Custom Dependencies
+
+**Problem**: Custom actions don't trigger re-evaluation of dependent fields.
+**Solution**: Ensure you provide a `dependencyVisitor` when registering the action.
+
+**Problem**: Fields show stale data after custom logic operations.
+**Solution**: Make sure your custom logic dependency visitor correctly identifies field dependencies.
+
+**Problem**: Circular dependencies detected with custom operations.
+**Solution**: Review your dependency visitors to ensure they don't create circular references.
+
+```typescript
+// ❌ Incorrect - missing dependencies
+const badVisitor: CustomActionDependencyVisitor = {
+  visitAction: () => ({ dependencies: [], dependents: [] })
+};
+
+// ✅ Correct - properly declares dependencies
+const goodVisitor: CustomActionDependencyVisitor = {
+  visitAction: ({ payload }) => ({
+    dependencies: payload.sources || [],
+    dependents: payload.target ? [payload.target] : []
+  })
+};
 ```
 
 ---
