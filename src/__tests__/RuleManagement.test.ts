@@ -1,5 +1,6 @@
-import { RuleManagement, CompiledRuleSet, RuleFile } from '../RuleManagement.js';
-import { RuleSet } from '../DependencyGraph.js';
+import type { CompiledRuleSet, RuleFile } from '../RuleManagement.js';
+import { RuleManagement } from '../RuleManagement.js';
+import type { RuleSet } from '../DependencyGraph.js';
 
 describe('RuleManagement', () => {
   describe('Folder Structure Validation', () => {
@@ -61,7 +62,7 @@ describe('RuleManagement', () => {
       ]);
 
       // Simulate adding a duplicate
-      const validateWithDuplicate = () => {
+      const validateWithDuplicate = (): void => {
         const seen = new Set();
         for (const id of mockIdPathMap.keys()) {
           if (seen.has(id)) {

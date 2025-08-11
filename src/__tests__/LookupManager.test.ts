@@ -1,4 +1,4 @@
-import { LookupManager, LookupTable } from '../LookupManager.js';
+import { LookupManager } from '../LookupManager.js';
 import { LogicResolver } from '../LogicResolver.js';
 
 describe('LookupManager', () => {

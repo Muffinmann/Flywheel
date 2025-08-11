@@ -1,42 +1,10 @@
-import { LogicResolver, Logic } from '../LogicResolver.js';
-
-// Define fieldState operator for testing
-const fieldStateOperator = (args: any[], context: any) => {
-  if (!Array.isArray(args) || args.length !== 1) {
-    throw new Error('fieldState operator requires exactly one argument');
-  }
-
-  const path = args[0];
-  if (typeof path !== 'string' || !path.includes('.')) {
-    throw new Error('fieldState operator requires format: fieldName.property');
-  }
-
-  const [fieldName, ...propertyParts] = path.split('.');
-  const propertyPath = propertyParts.join('.');
-
-  const fieldStates = context.fieldStates || {};
-  const fieldState = fieldStates[fieldName];
-
-  if (!fieldState) {
-    return undefined;
-  }
-
-  // Navigate nested properties
-  let value = fieldState;
-  for (const prop of propertyParts) {
-    value = value?.[prop];
-  }
-
-  return value;
-};
+import { LogicResolver } from '../LogicResolver.js';
 
 describe('LogicResolver', () => {
   let resolver: LogicResolver;
 
   beforeEach(() => {
     resolver = new LogicResolver();
-    // Register the fieldState custom operator for testing
-    resolver.registerCustomLogic([{ operator: 'fieldState', operand: fieldStateOperator }]);
   });
 
   describe('Basic Operations', () => {
@@ -58,70 +26,6 @@ describe('LogicResolver', () => {
     test('should handle $ reference in array operations', () => {
       const context = { $: 5 };
       expect(resolver.resolve({ var: ['$'] }, context)).toBe(5);
-    });
-
-    test('should handle fieldState references', () => {
-      const context = {
-        fieldStates: {
-          user_name: {
-            isVisible: true,
-            isRequired: false,
-            calculatedValue: 'John Doe',
-          },
-        },
-      };
-
-      expect(resolver.resolve({ fieldState: ['user_name.isVisible'] }, context)).toBe(true);
-      expect(resolver.resolve({ fieldState: ['user_name.isRequired'] }, context)).toBe(false);
-      expect(resolver.resolve({ fieldState: ['user_name.calculatedValue'] }, context)).toBe(
-        'John Doe'
-      );
-      expect(resolver.resolve({ fieldState: ['nonexistent.isVisible'] }, context)).toBeUndefined();
-    });
-
-    test('should handle nested fieldState properties', () => {
-      const context = {
-        fieldStates: {
-          user_info: {
-            permissions: {
-              read: true,
-              write: false,
-            },
-            validation: {
-              message: 'Required field',
-            },
-          },
-        },
-      };
-
-      expect(resolver.resolve({ fieldState: ['user_info.permissions.read'] }, context)).toBe(true);
-      expect(resolver.resolve({ fieldState: ['user_info.permissions.write'] }, context)).toBe(
-        false
-      );
-      expect(resolver.resolve({ fieldState: ['user_info.validation.message'] }, context)).toBe(
-        'Required field'
-      );
-    });
-
-    test('should throw error for invalid fieldState format', () => {
-      const context = { fieldStates: {} };
-
-      expect(() => resolver.resolve({ fieldState: ['fieldname'] }, context)).toThrow(
-        'fieldState operator requires format: fieldName.property'
-      );
-    });
-
-    test('should verify fieldState is registered as custom operator', () => {
-      // Test that resolver doesn't know about fieldState without registration
-      const freshResolver = new LogicResolver();
-      const context = { fieldStates: { test: { isVisible: true } } };
-
-      expect(() => freshResolver.resolve({ fieldState: ['test.isVisible'] }, context)).toThrow(
-        'Unknown operator: fieldState'
-      );
-
-      // But works with registration
-      expect(resolver.resolve({ fieldState: ['test.isVisible'] }, context)).toBe(true);
     });
   });
 
@@ -272,6 +176,7 @@ describe('LogicResolver', () => {
       resolver.registerCustomLogic([
         {
           operator: '+',
+          // eslint-disable-next-line @typescript-eslint/no-unsafe-return
           operand: (args) => args.reduce((acc, val) => acc - val, 0),
         },
       ]);

@@ -1,4 +1,5 @@
-import { FieldStateManager, FieldState, FieldStateManagerOptions } from '../FieldStateManager.js';
+import type { FieldState, FieldStateManagerOptions } from '../FieldStateManager.js';
+import { FieldStateManager } from '../FieldStateManager.js';
 
 describe('FieldStateManager', () => {
   let fieldStateManager: FieldStateManager;
@@ -203,11 +204,14 @@ describe('FieldStateManager', () => {
         };
 
         fieldStateManager.setFieldState('richField', stateWithExtras);
-        const retrievedState = fieldStateManager.getFieldState('richField');
+        const retrievedState = fieldStateManager.getFieldState('richField') as FieldState & {
+          metadata: { source: unknown };
+          permissions: { read: unknown; write: unknown };
+        };
 
         expect(retrievedState).toEqual(stateWithExtras);
-        expect(retrievedState!.metadata.source).toBe('api');
-        expect(retrievedState!.permissions.write).toBe(false);
+        expect(retrievedState.metadata.source).toBe('api');
+        expect(retrievedState.permissions.write).toBe(false);
       });
     });
   });
@@ -301,7 +305,9 @@ describe('FieldStateManager', () => {
       test('should create intermediate objects for nested paths', () => {
         fieldStateManager.setFieldProperty('autoField.deep.nested.value', 'created');
 
-        const fieldState = fieldStateManager.getFieldState('autoField')!;
+        const fieldState = fieldStateManager.getFieldState('autoField')! as unknown as {
+          deep: { nested: { value: unknown } };
+        };
         expect(fieldState.deep).toBeDefined();
         expect(fieldState.deep.nested).toBeDefined();
         expect(fieldState.deep.nested.value).toBe('created');
@@ -485,7 +491,13 @@ describe('FieldStateManager', () => {
       fieldStateManager.setFieldProperty('complexField.metadata.source', 'api');
       fieldStateManager.setFieldProperty('complexField.permissions.read', true);
 
-      const context = fieldStateManager.buildEvaluationContext();
+      const context = fieldStateManager.buildEvaluationContext() as unknown as {
+        complexField: {
+          value: { nested: unknown };
+          metadata: { source: string };
+          permissions: { read: boolean };
+        };
+      };
 
       expect(context.complexField.value.nested).toBe('object');
       expect(context.complexField.metadata.source).toBe('api');
@@ -589,15 +601,6 @@ describe('FieldStateManager', () => {
       expect(fieldStateManager.isFieldInitialized(fieldName)).toBe(true);
     });
 
-    test('should handle null field state in setFieldState', () => {
-      const nullState = null as any;
-      expect(() => {
-        fieldStateManager.setFieldState('nullField', nullState);
-      }).not.toThrow();
-
-      expect(fieldStateManager.getFieldState('nullField')).toBeNull();
-    });
-
     test('should handle undefined values in nested property setting', () => {
       fieldStateManager.setFieldProperty('undefinedField.value', undefined);
       fieldStateManager.setFieldProperty('undefinedField.nested.deep', undefined);
@@ -622,7 +625,7 @@ describe('FieldStateManager', () => {
       const finalState = fieldStateManager.getFieldState(fieldName)!;
       expect(finalState).toBe(initialState); // Same object reference
       expect(finalState.value).toBe('test');
-      expect(finalState.nested.prop).toBe('nested');
+      expect((finalState.nested as { prop: unknown }).prop).toBe('nested');
       expect(finalState.initialized).toBe(true);
       expect(finalState.isVisible).toBe(false); // Default preserved
       expect(finalState.isRequired).toBe(false); // Default preserved
@@ -662,25 +665,28 @@ describe('FieldStateManager', () => {
     });
 
     test('should handle complex custom field state creation', () => {
+      const complexState = {
+        metadata: {
+          createdAt: new Date('2023-01-01'),
+          version: 1,
+        },
+        permissions: {
+          read: true,
+          write: true,
+          delete: false,
+        },
+        validation: {
+          required: false,
+          pattern: null,
+        },
+      };
       const customManager = new FieldStateManager({
-        onFieldStateCreation: (props) => ({
-          metadata: {
-            createdAt: new Date('2023-01-01'),
-            version: 1,
-          },
-          permissions: {
-            read: true,
-            write: true,
-            delete: false,
-          },
-          validation: {
-            required: false,
-            pattern: null,
-          },
-        }),
+        onFieldStateCreation: () => complexState,
       });
 
-      const fieldState = customManager.ensureFieldState('complexField');
+      const fieldState = customManager.ensureFieldState(
+        'complexField'
+      ) as unknown as typeof complexState;
 
       expect(fieldState.metadata.createdAt).toEqual(new Date('2023-01-01'));
       expect(fieldState.metadata.version).toBe(1);

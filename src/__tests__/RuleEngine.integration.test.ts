@@ -1,5 +1,5 @@
 import { RuleEngine } from '../RuleEngine.js';
-import { RuleSet, FieldRule } from '../DependencyGraph.js';
+import type { RuleSet } from '../DependencyGraph.js';
 
 describe('RuleEngine Integration', () => {
   let engine: RuleEngine;
@@ -100,7 +100,7 @@ describe('RuleEngine Integration', () => {
       expect(fieldState.isVisible).toBe(true);
       expect(fieldState.calculatedValue).toBe(127.5); // 85 * 1.5
       expect(events).toHaveLength(1);
-      expect(events[0].eventType).toBe('admin_high_score');
+      expect((events[0] as { eventType: string }).eventType).toBe('admin_high_score');
     });
 
     test('should handle cascading field evaluations', () => {
@@ -540,7 +540,7 @@ describe('RuleEngine Integration', () => {
       expect(fieldState.calculatedValue).toBe(200); // 100 * 2.0
       expect(fieldState.customFlag).toBe(true);
       expect(events).toHaveLength(1);
-      expect(events[0].eventType).toBe('premium_access_granted');
+      expect((events[0] as { eventType: string }).eventType).toBe('premium_access_granted');
     });
   });
 });

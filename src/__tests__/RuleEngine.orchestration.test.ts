@@ -1,5 +1,5 @@
 import { RuleEngine } from '../RuleEngine.js';
-import { RuleSet } from '../DependencyGraph.js';
+import type { RuleSet } from '../DependencyGraph.js';
 
 describe('RuleEngine Orchestration', () => {
   let engine: RuleEngine;
@@ -115,6 +115,7 @@ describe('RuleEngine Orchestration', () => {
       const engine = new RuleEngine({
         onEvent: (eventType, params) => {
           if (eventType === 'field_evaluated') {
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unsafe-member-access
             evaluationOrder.push(params.fieldName);
           }
         },
@@ -126,7 +127,7 @@ describe('RuleEngine Orchestration', () => {
 
       engine.registerActionHandler<TrackPayload>({
         actionType: 'track',
-        handler: (payload, context) => {
+        handler: (payload) => {
           // Simplified tracking - just add to evaluation order
           evaluationOrder.push(payload.fieldName);
         },
@@ -272,11 +273,12 @@ describe('RuleEngine Orchestration', () => {
     });
 
     test('should orchestrate custom field state creation with actions', () => {
+      const definedState = {
+        metadata: { created: Date.now() },
+        permissions: { read: true, write: false },
+      };
       const engine = new RuleEngine({
-        onFieldStateCreation: () => ({
-          metadata: { created: Date.now() },
-          permissions: { read: true, write: false },
-        }),
+        onFieldStateCreation: () => definedState,
       });
 
       const ruleSet: RuleSet = {
@@ -292,7 +294,7 @@ describe('RuleEngine Orchestration', () => {
       engine.loadRuleSet(ruleSet);
       engine.updateFieldValue({ user_role: 'admin' });
 
-      const fieldState = engine.evaluateField('secure_field');
+      const fieldState = engine.evaluateField('secure_field') as unknown as typeof definedState;
 
       expect(fieldState.permissions.read).toBe(true);
       expect(fieldState.permissions.write).toBe(true);

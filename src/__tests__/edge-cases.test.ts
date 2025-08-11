@@ -1,5 +1,5 @@
 import { RuleEngine } from '../RuleEngine.js';
-import { RuleSet } from '../DependencyGraph.js';
+import type { RuleSet } from '../DependencyGraph.js';
 import { LogicResolver } from '../LogicResolver.js';
 import { RuleManagement } from '../RuleManagement.js';
 
@@ -74,13 +74,13 @@ describe('Edge Cases and Error Handling', () => {
     });
 
     test('should handle circular references in custom logic', () => {
-      const circularContext: any = { self: null };
+      const circularContext: { self: unknown } = { self: null };
       circularContext.self = circularContext;
 
       resolver.registerCustomLogic([
         {
           operator: 'access_circular',
-          operand: (args, context) => {
+          operand: (args, context: { self: unknown }) => {
             return context.self === context;
           },
         },
@@ -168,7 +168,9 @@ describe('Edge Cases and Error Handling', () => {
       const fieldState = engine.evaluateField('nested_field');
 
       // Should set the property even with deep nesting
-      expect(fieldState.deeply?.nested?.property).toBe('test');
+      expect((fieldState.deeply as { nested: { property: unknown } })?.nested?.property).toBe(
+        'test'
+      );
     });
 
     test('should handle rapid field updates', () => {

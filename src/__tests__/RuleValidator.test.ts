@@ -1,6 +1,5 @@
 import { RuleValidator } from '../RuleValidator.js';
-import { FieldRule } from '../DependencyGraph.js';
-import { Action } from '../ActionHandler.js';
+import type { FieldRule } from '../DependencyGraph.js';
 
 describe('RuleValidator', () => {
   let ruleValidator: RuleValidator;
@@ -166,7 +165,7 @@ describe('RuleValidator', () => {
       expect(sorted[0].priority).toBe(1);
       expect(sorted[1].priority).toBe(2);
       expect(sorted[2].priority).toBe(3);
-      expect((sorted[0].action as any).set.value).toBe('first');
+      expect((sorted[0].action as { set: { value: unknown } }).set.value).toBe('first');
     });
 
     test('should maintain stable sort for rules with same priority', () => {
@@ -230,7 +229,7 @@ describe('RuleValidator', () => {
       const rule = {
         action: { set: { target: 'field.isVisible', value: true } },
         priority: 1,
-      } as any;
+      } as FieldRule;
 
       expect(() => {
         ruleValidator.validateRuleStructure(rule);
@@ -241,7 +240,7 @@ describe('RuleValidator', () => {
       const rule = {
         condition: { '==': [1, 1] },
         priority: 1,
-      } as any;
+      } as unknown as FieldRule;
 
       expect(() => {
         ruleValidator.validateRuleStructure(rule);
@@ -253,7 +252,7 @@ describe('RuleValidator', () => {
         condition: { '==': [1, 1] },
         action: { set: { target: 'field.isVisible', value: true } },
         priority: 'invalid',
-      } as any;
+      } as unknown as FieldRule;
 
       expect(() => {
         ruleValidator.validateRuleStructure(rule);
@@ -264,7 +263,7 @@ describe('RuleValidator', () => {
       const rule = {
         condition: { '==': [1, 1] },
         action: { set: { target: 'field.isVisible', value: true } },
-      } as any;
+      } as unknown as FieldRule;
 
       expect(() => {
         ruleValidator.validateRuleStructure(rule);

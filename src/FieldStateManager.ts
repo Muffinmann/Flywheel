@@ -1,13 +1,23 @@
-export interface FieldState {
-  value?: any;
+// Core field state properties that are always present
+export interface CoreFieldState {
+  value?: unknown;
   isVisible: boolean;
   isRequired: boolean;
-  calculatedValue?: any;
-  [key: string]: any;
+  calculatedValue?: unknown;
 }
 
+// Extended field state allows additional custom properties
+export interface FieldState extends CoreFieldState {
+  [key: string]: unknown;
+}
+
+// Type for nested object structure used in field states
+export type NestedObject = {
+  [key: string]: unknown;
+};
+
 export interface FieldStateManagerOptions {
-  onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, any>;
+  onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, unknown>;
 }
 
 export class FieldStateManager {
@@ -30,7 +40,8 @@ export class FieldStateManager {
     };
 
     if (this.options.onFieldStateCreation) {
-      return { ...defaultState, ...this.options.onFieldStateCreation({}) };
+      const customProperties = this.options.onFieldStateCreation({});
+      return { ...defaultState, ...customProperties };
     }
 
     return defaultState;
@@ -64,7 +75,7 @@ export class FieldStateManager {
    * Creates the field with defaults if it doesn't exist.
    * Example: getFieldProperty('user.value') or getFieldProperty('user.isVisible')
    */
-  getFieldProperty(path: string): any {
+  getFieldProperty(path: string): unknown {
     const dotIndex = path.indexOf('.');
     if (dotIndex === -1) {
       throw new Error(`Invalid path format: ${path}. Expected format: "fieldName.property"`);
@@ -83,7 +94,7 @@ export class FieldStateManager {
    * Creates the field with defaults if it doesn't exist.
    * Example: setFieldProperty('user.value', 'John') or setFieldProperty('user.isVisible', true)
    */
-  setFieldProperty(path: string, value: any): void {
+  setFieldProperty(path: string, value: unknown): void {
     const dotIndex = path.indexOf('.');
     if (dotIndex === -1) {
       throw new Error(`Invalid path format: ${path}. Expected format: "fieldName.property"`);
@@ -97,31 +108,41 @@ export class FieldStateManager {
     this.setNestedProperty(fieldState, propertyPath, value);
   }
 
-  private getNestedProperty(obj: any, path: string): any {
+  private getNestedProperty(obj: NestedObject, path: string): unknown {
     const parts = path.split('.');
-    let current = obj;
+    let current: unknown = obj;
 
     for (const part of parts) {
-      if (current === null || current === undefined || !(part in current)) {
+      if (
+        current === null ||
+        current === undefined ||
+        typeof current !== 'object' ||
+        !(part in (current as Record<string, unknown>))
+      ) {
         return undefined;
       }
-      current = current[part];
+      current = (current as Record<string, unknown>)[part];
     }
 
     return current;
   }
 
-  private setNestedProperty(obj: any, path: string, value: any): void {
+  private setNestedProperty(obj: NestedObject, path: string, value: unknown): void {
     const parts = path.split('.');
-    let current = obj;
+    let current: NestedObject = obj;
 
     // Navigate to the parent object
     for (let i = 0; i < parts.length - 1; i++) {
       const part = parts[i];
-      if (!(part in current) || typeof current[part] !== 'object' || current[part] === null) {
+      if (
+        !(part in current) ||
+        typeof current[part] !== 'object' ||
+        current[part] === null ||
+        current[part] === undefined
+      ) {
         current[part] = {};
       }
-      current = current[part];
+      current = current[part] as NestedObject;
     }
 
     // Set the final property
@@ -129,7 +150,7 @@ export class FieldStateManager {
     current[finalPart] = value;
   }
 
-  buildEvaluationContext(): Record<string, any> {
+  buildEvaluationContext(): Record<string, FieldState> {
     return Object.fromEntries(this.fieldStates.entries());
   }
 
@@ -142,7 +163,7 @@ export class FieldStateManager {
     return this.initializedFields.has(fieldName);
   }
 
-  initializeField(fieldName: string, fieldState?: Record<string, any>): void {
+  initializeField(fieldName: string, fieldState?: Record<string, unknown>): void {
     if (this.initializedFields.has(fieldName)) {
       return; // Already initialized
     }

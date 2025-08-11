@@ -1,4 +1,4 @@
-import { RuleSet } from '../DependencyGraph.js';
+import type { RuleSet } from '../DependencyGraph.js';
 import { RuleEngine } from '../RuleEngine.js';
 
 describe('RuleEngine', () => {
@@ -159,7 +159,9 @@ describe('RuleEngine', () => {
       engine.evaluateField('trigger_field');
 
       expect(events).toHaveLength(1);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(events[0].eventType).toBe('custom_event');
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
       expect(events[0].params.data).toBe('test');
     });
 

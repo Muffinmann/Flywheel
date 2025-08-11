@@ -1,9 +1,10 @@
 import { RuleEngine } from '../RuleEngine.js';
-import { DependencyInfo } from '../DependencyGraph.js';
-import {
+import type { DependencyInfo } from '../DependencyGraph.js';
+import type {
   CustomLogicDependencyVisitor,
   CustomActionDependencyVisitor,
 } from '../DependencyVisitor.js';
+import type { Action } from '../ActionHandler.js';
 
 describe('Custom Dependency Tracking', () => {
   let ruleEngine: RuleEngine;
@@ -50,7 +51,9 @@ describe('Custom Dependency Tracking', () => {
         field3: [
           {
             condition: { '==': [{ var: 'field1' }, 'trigger'] },
-            action: { customSet: { source: 'field2', target: 'field3' } } as any,
+            action: { customSet: { source: 'field2', target: 'field3' } } as Action & {
+              customSet: { source: string; target: string };
+            },
             priority: 1,
           },
         ],
@@ -74,7 +77,7 @@ describe('Custom Dependency Tracking', () => {
             // Merge action reads from multiple sources and writes to target
             const mergePayload = payload as { sources?: string[]; target?: string };
             return {
-              dependencies: mergePayload.sources || [],
+              dependencies: mergePayload.sources ?? [],
               dependents: mergePayload.target ? [mergePayload.target] : [],
             };
           }
@@ -100,7 +103,9 @@ describe('Custom Dependency Tracking', () => {
         result: [
           {
             condition: { '==': [{ var: 'trigger' }, true] },
-            action: { merge: { sources: ['field1', 'field2', 'field3'], target: 'result' } } as any,
+            action: {
+              merge: { sources: ['field1', 'field2', 'field3'], target: 'result' },
+            } as Action & { merge: { sources: string[]; target: string } },
             priority: 1,
           },
         ],
@@ -140,8 +145,11 @@ describe('Custom Dependency Tracking', () => {
       ruleEngine.registerCustomLogic({
         operator: 'compareFields',
         handler: (args, context) => {
-          const [field1, field2] = args;
-          return context[field1] === context[field2];
+          const [field1, field2] = args as [string, string];
+          return (
+            (context as Record<string, unknown>)[field1] ===
+            (context as Record<string, unknown>)[field2]
+          );
         },
         dependencyVisitor: customLogicVisitor,
       });
@@ -185,7 +193,11 @@ describe('Custom Dependency Tracking', () => {
       ruleEngine.registerCustomLogic({
         operator: 'sumFields',
         handler: (args, context) => {
-          return args.reduce((sum: number, field: string) => sum + (context[field] || 0), 0);
+          return (args as string[]).reduce(
+            (sum: number, field: string) =>
+              sum + (((context as Record<string, unknown>)[field] as number) ?? 0),
+            0
+          );
         },
         dependencyVisitor: customLogicVisitor,
       });
@@ -242,7 +254,10 @@ describe('Custom Dependency Tracking', () => {
       ruleEngine.registerCustomLogic({
         operator: 'hasValue',
         handler: (args, context) => {
-          return context[args[0]] !== null && context[args[0]] !== undefined;
+          return (
+            (context as Record<string, unknown>)[args[0] as string] !== null &&
+            (context as Record<string, unknown>)[args[0] as string] !== undefined
+          );
         },
         dependencyVisitor: logicVisitor,
       });
@@ -264,7 +279,9 @@ describe('Custom Dependency Tracking', () => {
         transformed: [
           {
             condition: { hasValue: ['input'] },
-            action: { transform: { source: 'input', target: 'transformed' } } as any,
+            action: { transform: { source: 'input', target: 'transformed' } } as Action & {
+              transform: { source: string; target: string };
+            },
             priority: 1,
           },
         ],
@@ -287,7 +304,7 @@ describe('Custom Dependency Tracking', () => {
           if (actionType === 'concat') {
             const concatPayload = payload as { sources?: string[]; target?: string };
             return {
-              dependencies: concatPayload.sources || [],
+              dependencies: concatPayload.sources ?? [],
               dependents: concatPayload.target ? [concatPayload.target] : [],
             };
           }
@@ -306,8 +323,10 @@ describe('Custom Dependency Tracking', () => {
           const result = payload.sources
             .map((s: string) => {
               // Get field value from context
-              const fieldState = context[s] as any;
-              return (fieldState && fieldState.value) || '';
+              const fieldState = (context as Record<string, unknown>)[s] as
+                | Record<string, unknown>
+                | undefined;
+              return (fieldState?.value as string) ?? '';
             })
             .join('');
           // Use the onFieldPropertySet callback to update the field
@@ -320,7 +339,9 @@ describe('Custom Dependency Tracking', () => {
         fullName: [
           {
             condition: true,
-            action: { concat: { sources: ['firstName', 'lastName'], target: 'fullName' } } as any,
+            action: {
+              concat: { sources: ['firstName', 'lastName'], target: 'fullName' },
+            } as Action & { concat: { sources: string[]; target: string } },
             priority: 1,
           },
         ],

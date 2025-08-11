@@ -1,5 +1,5 @@
 import { RuleEngine } from '../RuleEngine.js';
-import { RuleSet } from '../DependencyGraph.js';
+import type { RuleSet } from '../DependencyGraph.js';
 
 describe('Integration Tests', () => {
   describe('E-commerce Product Configuration', () => {
@@ -328,7 +328,7 @@ describe('Integration Tests', () => {
       engine.evaluateField('email_field');
 
       expect(validationEvents).toHaveLength(1);
-      expect(validationEvents[0].eventType).toBe('validate_email');
+      expect((validationEvents[0] as { eventType: string }).eventType).toBe('validate_email');
 
       // Step 2: Enter password
       engine.updateFieldValue({ password: 'secret123' });
@@ -459,6 +459,7 @@ describe('Integration Tests', () => {
           operator: 'track_eval',
           operand: (args) => {
             evaluationCount++;
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-return
             return args[0];
           },
         },

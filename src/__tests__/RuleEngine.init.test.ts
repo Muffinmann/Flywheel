@@ -1,5 +1,5 @@
 import { RuleEngine } from '../RuleEngine.js';
-import { RuleSet } from '../DependencyGraph.js';
+import type { RuleSet } from '../DependencyGraph.js';
 
 describe('RuleEngine - Init Action', () => {
   let engine: RuleEngine;
@@ -56,8 +56,8 @@ describe('RuleEngine - Init Action', () => {
       engine.evaluateField('user_preference');
 
       // Check field value using unified context
-      const context = (engine as any).fieldStateManager.buildEvaluationContext();
-      expect(context.user_preference.value).toBe('dark-mode');
+      const fieldValue = engine.getFieldValue('user_preference');
+      expect(fieldValue).toBe('dark-mode');
     });
 
     test('should initialize both field state and value', () => {
@@ -85,8 +85,8 @@ describe('RuleEngine - Init Action', () => {
       expect(fieldState.isVisible).toBe(true);
       expect(fieldState.plans).toEqual(['basic', 'pro', 'enterprise']);
 
-      const context = (engine as any).fieldStateManager.buildEvaluationContext();
-      expect(context.subscription.value).toBe('pro');
+      const fieldValue = engine.getFieldValue('subscription');
+      expect(fieldValue).toBe('pro');
     });
   });
 

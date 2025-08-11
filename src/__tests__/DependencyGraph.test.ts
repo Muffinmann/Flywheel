@@ -1,4 +1,5 @@
-import { DependencyGraph, RuleSet, DependencyVisitor } from '../DependencyGraph.js';
+import type { RuleSet, DependencyVisitor } from '../DependencyGraph.js';
+import { DependencyGraph } from '../DependencyGraph.js';
 
 describe('DependencyGraph', () => {
   let dependencyGraph: DependencyGraph;

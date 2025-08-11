@@ -1,4 +1,5 @@
-import { ActionHandler, Action } from '../ActionHandler.js';
+import type { Action } from '../ActionHandler.js';
+import { ActionHandler } from '../ActionHandler.js';
 import { LogicResolver } from '../LogicResolver.js';
 
 describe('ActionHandler', () => {
@@ -122,7 +123,7 @@ describe('ActionHandler', () => {
       const customHandler = jest.fn();
       actionHandler.registerActionHandler('custom', customHandler);
 
-      const action = { custom: { message: 'test' } } as any;
+      const action = { custom: { message: 'test' } } as Action & { custom: { message: string } };
       const context = { data: 'context' };
 
       actionHandler.executeAction(action, context);
@@ -131,7 +132,9 @@ describe('ActionHandler', () => {
     });
 
     test('should throw error for unknown action types', () => {
-      const action = { unknownAction: { data: 'test' } } as any;
+      const action = { unknownAction: { data: 'test' } } as Action & {
+        unknownAction: { data: string };
+      };
 
       expect(() => {
         actionHandler.executeAction(action, {});

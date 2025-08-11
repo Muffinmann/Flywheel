@@ -1,6 +1,6 @@
 import { DependencyVisitor } from '../DependencyVisitor.js';
-import { Logic } from '../LogicResolver.js';
-import { Action } from '../ActionHandler.js';
+import type { Logic } from '../LogicResolver.js';
+import type { Action } from '../ActionHandler.js';
 
 describe('DependencyVisitor', () => {
   let visitor: DependencyVisitor;
@@ -361,7 +361,9 @@ describe('DependencyVisitor', () => {
       });
 
       test('should return empty array for unknown action types', () => {
-        const action = { custom_action: { param: 'value' } } as any;
+        const action = { custom_action: { param: 'value' } } as Action & {
+          custom_action: { param: string };
+        };
         const dependencies = visitor.visitAction(action);
         expect(dependencies).toEqual({ dependencies: [], dependents: [] });
       });
@@ -422,7 +424,7 @@ describe('DependencyVisitor', () => {
 
   describe('edge cases and error handling', () => {
     test('should handle undefined logic gracefully', () => {
-      const dependencies = visitor.visitLogic(undefined as any);
+      const dependencies = visitor.visitLogic(undefined as unknown as Logic);
       expect(dependencies).toEqual({ dependencies: [], dependents: [] });
     });
 
