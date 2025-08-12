@@ -78,7 +78,7 @@
  *
  * You can also register custom logic via:
  * ```ts
- * function custom_function_reference(args: any[], context: any) {}
+ * function custom_function_reference(args: unknown[], context: EvaluationContext) {}
  * const customLogic = [
  *  {
  *    "operator": "my_custom_operator",
@@ -98,29 +98,25 @@
  * ```
  */
 
-export type Logic =
-  | { [operator: string]: any[] | any }
-  | string
-  | number
-  | boolean
-  | null
-  | undefined
-  | Logic[];
+type EvaluationContext = Record<string, unknown>;
+type PrimitiveValue = string | number | boolean | null | undefined | symbol | bigint;
+export type Logic = { [operator: string]: Logic | Logic[] } | Logic[] | PrimitiveValue;
 
 export interface CustomLogicRegistration {
   operator: string;
-  operand: (args: any[], context: any) => any;
+  operand: (args: unknown[], context: EvaluationContext) => unknown;
 }
 
 export interface DebugTrace {
   operator: string;
-  operands: any[];
-  result: any;
+  operands: unknown[];
+  result: unknown;
   children?: DebugTrace[];
 }
 
 export class LogicResolver {
-  private customLogic: Map<string, (args: any[], context: any) => any> = new Map();
+  private customLogic: Map<string, (args: unknown[], context: EvaluationContext) => unknown> =
+    new Map();
 
   registerCustomLogic(customLogic: CustomLogicRegistration[]): void {
     for (const { operator, operand } of customLogic) {
@@ -128,11 +124,11 @@ export class LogicResolver {
     }
   }
 
-  resolve(logic: Logic, context: any): any {
+  resolve(logic: Logic, context: EvaluationContext): unknown {
     return this.evaluateLogic(logic, context);
   }
 
-  debugEvaluate(logic: Logic, context: any): { result: any; trace: DebugTrace } {
+  debugEvaluate(logic: Logic, context: EvaluationContext): { result: unknown; trace: DebugTrace } {
     const trace: DebugTrace = { operator: 'root', operands: [], result: null };
     const result = this.evaluateLogic(logic, context, trace);
 
@@ -151,7 +147,11 @@ export class LogicResolver {
     return { result, trace };
   }
 
-  private evaluateLogic(logic: Logic, context: any, trace?: DebugTrace): any {
+  private evaluateLogic(
+    logic: Logic,
+    context: EvaluationContext,
+    trace?: DebugTrace
+  ): PrimitiveValue | PrimitiveValue[] {
     if (logic === null || logic === undefined) {
       return logic;
     }
@@ -161,7 +161,7 @@ export class LogicResolver {
     }
 
     if (Array.isArray(logic)) {
-      return logic.map((item) => this.evaluateLogic(item, context));
+      return logic.map((item) => this.evaluateLogic(item, context)) as PrimitiveValue[];
     }
 
     const entries = Object.entries(logic);
@@ -169,7 +169,69 @@ export class LogicResolver {
       throw new Error('Logic object must have exactly one operator');
     }
 
-    const [operator, operands] = entries[0];
+    const [operator, operands] = entries[0] as [string, Logic];
+
+    // Handle array operations specially before general evaluation
+    if (operator === 'some' || operator === 'every' || operator === 'map') {
+      const operandArray = Array.isArray(operands) ? operands : [operands];
+      const arrayOperand = operandArray[0];
+      const condition = operandArray[1];
+
+      // Evaluate only the array part
+      const evaluatedArray = this.evaluateLogic(arrayOperand, context);
+
+      if (trace) {
+        trace.operator = operator;
+        trace.operands = [evaluatedArray, condition];
+      }
+
+      if (!Array.isArray(evaluatedArray)) {
+        // Return appropriate default for non-array input
+        if (operator === 'some') {
+          return false;
+        }
+        if (operator === 'every') {
+          return true;
+        }
+        if (operator === 'map') {
+          return [];
+        }
+      }
+
+      if (!condition) {
+        // Return appropriate default when no condition provided
+        if (operator === 'some') {
+          return false;
+        }
+        if (operator === 'every') {
+          return true;
+        }
+        if (operator === 'map') {
+          return [];
+        }
+      }
+
+      // At this point, evaluatedArray is definitely an array and condition exists
+      const arrayToProcess = evaluatedArray as unknown[];
+
+      // Handle the iteration logic here in evaluateLogic
+      switch (operator) {
+        case 'some':
+          return arrayToProcess.some((item: unknown) =>
+            this.evaluateLogic(condition, { ...context, $: item })
+          );
+        case 'every':
+          return arrayToProcess.every((item: unknown) =>
+            this.evaluateLogic(condition, { ...context, $: item })
+          );
+        case 'map':
+          return arrayToProcess.map((item: unknown) =>
+            this.evaluateLogic(condition, { ...context, $: item })
+          ) as PrimitiveValue[];
+      }
+    }
+
+    // Normal evaluation for all other operators
     const resolvedOperands = Array.isArray(operands)
       ? operands.map((op) => this.evaluateLogic(op, context))
       : [this.evaluateLogic(operands, context)];
@@ -179,23 +241,22 @@ export class LogicResolver {
       trace.operands = resolvedOperands;
     }
 
-    return this.executeOperation(operator, resolvedOperands, context, operands);
+    return this.executeOperation(operator, resolvedOperands, context);
   }
 
   private executeOperation(
     operator: string,
-    operands: any[],
-    context: any,
-    originalOperands?: any
-  ): any {
+    operands: unknown[],
+    context: EvaluationContext
+  ): PrimitiveValue | PrimitiveValue[] {
     if (this.customLogic.has(operator)) {
-      return this.customLogic.get(operator)!(operands, context);
+      return this.customLogic.get(operator)!(operands, context) as PrimitiveValue;
     }
 
     switch (operator) {
       // Variable access
       case 'var':
-        return this.getVariable(operands[0], context);
+        return this.getVariable(operands[0] as string, context);
 
       // Arithmetic operations
       case '+':
@@ -203,34 +264,52 @@ export class LogicResolver {
         if (operands.length === 0) {
           return 0;
         }
-        if (operands.some((op) => typeof op === 'string')) {
-          return operands.reduce((acc, val) => String(acc) + String(val), '');
+        if (!operands.every((op) => typeof op === 'number')) {
+          throw new TypeError('Add operation requires all operands to be numbers');
         }
         return operands.reduce((acc, val) => acc + val, 0);
       case '-':
+        if (!operands.every((op) => typeof op === 'number')) {
+          throw new TypeError('Subtraction operation requires all operands to be numbers');
+        }
         return operands.length === 1 ? -operands[0] : operands[0] - operands[1];
       case '*':
+        if (!operands.every((op) => typeof op === 'number')) {
+          throw new TypeError('Multiplication operation requires all operands to be numbers');
+        }
         return operands.reduce((acc, val) => acc * val, 1);
       case '/':
+        if (!operands.every((op) => typeof op === 'number')) {
+          throw new TypeError('Division operation requires all operands to be numbers');
+        }
         return operands[0] / operands[1];
 
       // Math operations
       case 'sqrt':
+        if (typeof operands[0] !== 'number') {
+          throw new TypeError('sqrt operation requires a number');
+        }
         return Math.sqrt(operands[0]);
       case 'floor':
+        if (typeof operands[0] !== 'number') {
+          throw new TypeError('floor operation requires a number');
+        }
         return Math.floor(operands[0]);
       case 'abs':
+        if (typeof operands[0] !== 'number') {
+          throw new TypeError('abs operation requires a number');
+        }
         return Math.abs(operands[0]);
 
       // Comparison operations
       case '>':
-        return operands[0] > operands[1];
+        return (operands[0] as string | number) > (operands[1] as string | number);
       case '<':
-        return operands[0] < operands[1];
+        return (operands[0] as string | number) < (operands[1] as string | number);
       case '>=':
-        return operands[0] >= operands[1];
+        return (operands[0] as string | number) >= (operands[1] as string | number);
       case '<=':
-        return operands[0] <= operands[1];
+        return (operands[0] as string | number) <= (operands[1] as string | number);
       case '==':
         return operands[0] === operands[1];
       case '!=':
@@ -246,60 +325,32 @@ export class LogicResolver {
 
       // Conditional operations
       case 'if':
-        return operands[0] ? operands[1] : operands[2];
-
-      // Array operations
-      case 'some':
-        const someArray = operands[0];
-        const someCondition =
-          originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
-        if (!someCondition || !Array.isArray(someArray)) {
-          return false;
-        }
-        return someArray.some((item: any) =>
-          this.evaluateLogic(someCondition, { ...context, $: item })
-        );
-      case 'every':
-        const everyArray = operands[0];
-        const everyCondition =
-          originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
-        if (!everyCondition || !Array.isArray(everyArray)) {
-          return true;
-        }
-        return everyArray.every((item: any) =>
-          this.evaluateLogic(everyCondition, { ...context, $: item })
-        );
-      case 'map':
-        const mapArray = operands[0];
-        const mapExpression =
-          originalOperands && originalOperands.length > 1 ? originalOperands[1] : null;
-        if (!mapExpression || !Array.isArray(mapArray)) {
-          return [];
-        }
-        return mapArray.map((item: any) =>
-          this.evaluateLogic(mapExpression, { ...context, $: item })
-        );
+        return operands[0]
+          ? (operands[1] as PrimitiveValue | PrimitiveValue[])
+          : (operands[2] as PrimitiveValue | PrimitiveValue[]);
 
       default:
         throw new Error(`Unknown operator: ${operator}`);
     }
   }
 
-  private getVariable(path: string, context: any): any {
+  private getVariable(path: string, context: EvaluationContext): PrimitiveValue {
     if (path === '$') {
-      return context['$'];
+      return context['$'] as PrimitiveValue;
     }
 
     const keys = path.split('.');
-    let value = context;
+    let value: PrimitiveValue | EvaluationContext = context;
 
     for (const key of keys) {
       if (value === null || value === undefined) {
         return undefined;
       }
-      value = value[key];
+      if (typeof value === 'object') {
+        value = value[key] as PrimitiveValue | EvaluationContext;
+      }
     }
 
-    return value;
+    return value as PrimitiveValue;
   }
 }
