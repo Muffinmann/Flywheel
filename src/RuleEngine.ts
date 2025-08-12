@@ -6,8 +6,8 @@ import type { RuleSet } from './DependencyGraph';
 import { DependencyGraph } from './DependencyGraph';
 import type { FieldState } from './FieldStateManager';
 import { FieldStateManager } from './FieldStateManager';
-import { RuleValidator } from './RuleValidator';
-import { LookupManager } from './LookupManager';
+import { RuleValidator, type SharedRuleMap } from './RuleValidator';
+import { LookupManager, type TableConfig } from './LookupManager';
 import type {
   CustomLogicDependencyVisitor,
   CustomActionDependencyVisitor,
@@ -263,9 +263,26 @@ import { CacheManager } from './CacheManager';
  *
  * This separation of concerns provides better maintainability, testability, and performance.
  */
+
+// Type definitions for better type safety
+export type FieldValueMap = Record<string, unknown>;
+
+export interface CustomLogicHandler {
+  (args: unknown[], context: Record<string, unknown>): unknown;
+}
+
+export interface CustomActionHandler<T = unknown> {
+  (payload: T, context: Record<string, unknown>, helpers?: Record<string, unknown>): void;
+}
+
+export interface RuleEngineError extends Error {
+  code: string;
+  context?: Record<string, unknown>;
+}
+
 export interface RuleEngineOptions {
-  onEvent?: (eventType: string, params?: any) => void;
-  onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, any>;
+  onEvent?: (eventType: string, params?: unknown) => void;
+  onFieldStateCreation?: (props: Record<string, unknown>) => Record<string, unknown>;
 }
 
 export class RuleEngine {
@@ -287,7 +304,7 @@ export class RuleEngine {
 
   private ruleSet: RuleSet = {};
 
-  private sharedRules: Record<string, Logic> = {};
+  private sharedRules: SharedRuleMap = {};
 
   constructor(options: RuleEngineOptions = {}) {
     this.logicResolver = new LogicResolver();
@@ -335,22 +352,86 @@ export class RuleEngine {
     this.lookupManager = new LookupManager(this.logicResolver);
   }
 
+  // Type guard helper functions
+  private isString(value: unknown): value is string {
+    return typeof value === 'string' && value.length > 0;
+  }
+
+  private isObject(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null && !Array.isArray(value);
+  }
+
+  private isFieldValueMap(value: unknown): value is FieldValueMap {
+    return this.isObject(value) && Object.keys(value).every((key) => this.isString(key));
+  }
+
+  private isRuleSet(value: unknown): value is RuleSet {
+    return this.isObject(value);
+  }
+
+  private isTableConfigArray(value: unknown): value is TableConfig[] {
+    return (
+      Array.isArray(value) &&
+      value.every(
+        (item) =>
+          this.isObject(item) &&
+          'table' in item &&
+          'primaryKey' in item &&
+          Array.isArray(item.table) &&
+          this.isString(item.primaryKey)
+      )
+    );
+  }
+
+  private createRuleEngineError(
+    message: string,
+    code: string,
+    context?: Record<string, unknown>
+  ): RuleEngineError {
+    const error = new Error(message) as RuleEngineError;
+    error.code = code;
+    error.context = context;
+    return error;
+  }
+
   getLogicResolver(): LogicResolver {
     return this.logicResolver;
   }
 
   loadRuleSet(ruleSet: RuleSet): void {
+    if (!this.isRuleSet(ruleSet)) {
+      throw this.createRuleEngineError('Rule set must be a valid object', 'INVALID_RULE_SET', {
+        ruleSet,
+      });
+    }
+
     this.ruleSet = ruleSet;
     this.dependencyGraph.buildFromRuleSet(ruleSet);
     this.dependencyGraph.validateNoCycles(ruleSet);
   }
 
-  registerSharedRules(sharedRules: Record<string, Logic>): void {
+  registerSharedRules(sharedRules: SharedRuleMap): void {
+    if (!this.isObject(sharedRules)) {
+      throw this.createRuleEngineError(
+        'Shared rules must be a valid object',
+        'INVALID_SHARED_RULES',
+        { sharedRules }
+      );
+    }
+
     this.sharedRules = { ...this.sharedRules, ...sharedRules };
     this.dependencyVisitor.updateSharedRules(this.sharedRules);
   }
 
-  registerLookupTables(tables: { table: any[]; primaryKey: string; name?: string }[]): void {
+  registerLookupTables(tables: TableConfig[]): void {
+    if (!this.isTableConfigArray(tables)) {
+      throw this.createRuleEngineError(
+        'Tables must be a valid array of table configurations',
+        'INVALID_TABLE_CONFIG',
+        { tables }
+      );
+    }
+
     this.lookupManager.registerLookupTables(tables);
   }
 
@@ -369,9 +450,21 @@ export class RuleEngine {
 
   registerCustomLogic(params: {
     operator: string;
-    handler: (args: any[], context: any) => any;
+    handler: CustomLogicHandler;
     dependencyVisitor?: CustomLogicDependencyVisitor;
   }): void {
+    if (!this.isString(params.operator)) {
+      throw this.createRuleEngineError(
+        'Operator name must be a non-empty string',
+        'INVALID_OPERATOR',
+        { params }
+      );
+    }
+
+    if (typeof params.handler !== 'function') {
+      throw this.createRuleEngineError('Handler must be a function', 'INVALID_HANDLER', { params });
+    }
+
     // Register with LogicResolver for execution
     this.logicResolver.registerCustomLogic([
       {
@@ -387,27 +480,40 @@ export class RuleEngine {
   }
 
   private extractActionTargets(action: Action): string[] {
-    const actionType = Object.keys(action)[0];
-    const payload = (action as any)[actionType];
-
-    switch (actionType) {
-      case 'set':
-        return [payload.target];
-      case 'copy':
-        return [payload.target];
-      case 'calculate':
-        return [payload.target];
-      case 'batch':
-        return payload.flatMap((subAction: Action) => this.extractActionTargets(subAction));
-      case 'init':
-        // Init action doesn't have a target as it applies to the field itself
-        return [];
-      default:
-        return [];
+    if ('set' in action) {
+      return [action.set.target];
     }
+    if ('copy' in action) {
+      return [action.copy.target];
+    }
+    if ('calculate' in action) {
+      return [action.calculate.target];
+    }
+    if ('batch' in action) {
+      return action.batch.flatMap((subAction: Action) => this.extractActionTargets(subAction));
+    }
+    if ('init' in action) {
+      // Init action doesn't have a target as it applies to the field itself
+      return [];
+    }
+    if ('trigger' in action) {
+      // Trigger action doesn't modify field properties
+      return [];
+    }
+
+    // Unknown action type
+    return [];
   }
 
-  updateFieldValue(fieldUpdates: Record<string, any>): string[] {
+  updateFieldValue(fieldUpdates: FieldValueMap): string[] {
+    if (!this.isFieldValueMap(fieldUpdates)) {
+      throw this.createRuleEngineError(
+        'Field updates must be a valid field-value map',
+        'INVALID_FIELD_UPDATES',
+        { fieldUpdates }
+      );
+    }
+
     for (const [fieldName, value] of Object.entries(fieldUpdates)) {
       this.fieldStateManager.setFieldProperty(`${fieldName}.value`, value);
     }
@@ -418,11 +524,27 @@ export class RuleEngine {
     return invalidatedFields;
   }
 
-  getFieldValue(fieldName: string): any {
+  getFieldValue(fieldName: string): unknown {
+    if (!this.isString(fieldName)) {
+      throw this.createRuleEngineError(
+        'Field name must be a non-empty string',
+        'INVALID_FIELD_NAME',
+        { fieldName }
+      );
+    }
+
     return this.fieldStateManager.getFieldProperty(`${fieldName}.value`);
   }
 
   evaluateField(fieldName: string): FieldState {
+    if (!this.isString(fieldName)) {
+      throw this.createRuleEngineError(
+        'Field name must be a non-empty string',
+        'INVALID_FIELD_NAME',
+        { fieldName }
+      );
+    }
+
     // Check if we have a valid cached evaluation
     if (this.cacheManager.isValid(fieldName)) {
       return this.fieldStateManager.getFieldState(fieldName)!;
@@ -490,53 +612,63 @@ export class RuleEngine {
   }
 
   getDependenciesOf(fieldName: string): string[] {
+    if (!this.isString(fieldName)) {
+      throw this.createRuleEngineError(
+        'Field name must be a non-empty string',
+        'INVALID_FIELD_NAME',
+        { fieldName }
+      );
+    }
+
     return this.dependencyGraph.getDependencies(fieldName);
   }
 
-  private buildEvaluationContext(): any {
+  private buildEvaluationContext(): Record<string, unknown> {
     return this.fieldStateManager.buildEvaluationContext();
   }
 
   private resolveSharedRules(logic: Logic): Logic {
     if (typeof logic === 'object' && logic !== null && !Array.isArray(logic)) {
-      const resolved: any = {};
+      const resolved: Record<string, Logic> = {};
       for (const [key, value] of Object.entries(logic)) {
         if (key === '$ref' && typeof value === 'string') {
           this.ruleValidator.validateSharedRuleExists(value, this.sharedRules);
           return this.resolveSharedRules(this.sharedRules[value]);
         }
         resolved[key] = Array.isArray(value)
-          ? value.map((item) => this.resolveSharedRules(item))
-          : this.resolveSharedRules(value);
+          ? value.map((item: Logic) => this.resolveSharedRules(item))
+          : this.resolveSharedRules(value as Logic);
       }
       return resolved;
     }
     if (Array.isArray(logic)) {
-      return logic.map((item) => this.resolveSharedRules(item)) as Logic;
+      return logic.map((item: Logic) => this.resolveSharedRules(item));
     }
     return logic;
   }
 
-  private resolveSharedRulesInAction(action: any): any {
+  private resolveSharedRulesInAction(action: Action): Action {
     if (typeof action === 'object' && action !== null && !Array.isArray(action)) {
-      const resolved: any = {};
+      const resolved: Record<string, unknown> = {};
       for (const [key, value] of Object.entries(action)) {
         if (key === 'formula' && typeof value === 'object') {
           // Resolve shared rules in formula using the same logic as conditions
-          resolved[key] = this.resolveSharedRules(value);
+          resolved[key] = this.resolveSharedRules(value as Logic);
         } else if (Array.isArray(value)) {
           // Handle batch actions
-          resolved[key] = value.map((item) => this.resolveSharedRulesInAction(item));
+          resolved[key] = value.map((item: Action) => this.resolveSharedRulesInAction(item));
         } else if (typeof value === 'object' && value !== null) {
-          resolved[key] = this.resolveSharedRulesInAction(value);
+          resolved[key] = this.resolveSharedRulesInAction(value as Action);
         } else {
           resolved[key] = value;
         }
       }
-      return resolved;
+      return resolved as Action;
     }
     if (Array.isArray(action)) {
-      return action.map((item) => this.resolveSharedRulesInAction(item));
+      return (action as unknown as Action[]).map((item: Action) =>
+        this.resolveSharedRulesInAction(item)
+      ) as unknown as Action;
     }
     return action;
   }
