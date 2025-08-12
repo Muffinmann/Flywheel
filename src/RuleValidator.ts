@@ -31,7 +31,7 @@ export class RuleValidator {
   }
 
   private isNumber(value: unknown): value is number {
-    return typeof value === 'number' && !isNaN(value);
+    return typeof value === 'number' && !Number.isNaN(value);
   }
 
   private isObject(value: unknown): value is Record<string, unknown> {
@@ -157,16 +157,6 @@ export class RuleValidator {
 
     if (!this.isNumber(rule.priority)) {
       throw new Error('Rule priority must be a number');
-    }
-
-    // Additional enhanced validations
-    if (!isFinite(rule.priority)) {
-      throw this.createValidationError(
-        'Rule priority must be a finite number',
-        'INVALID_PRIORITY_VALUE',
-        undefined,
-        { rule, priority: rule.priority }
-      );
     }
 
     // Check overall structure is valid FieldRule
